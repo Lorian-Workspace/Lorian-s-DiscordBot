@@ -1,0 +1,71 @@
+[commands.ping]
+name = "ping"
+description = "Responds with Pong!"
+
+[commands.info]
+name = "info"
+description = "Bot information"
+
+[commands.hello]
+name = "hello"
+description = "Greets the user"
+
+[commands.help]
+name = "help"
+description = "Shows command help"
+
+[commands.images]
+name = "images"
+description = "Shows available bot images by category"
+
+[commands.userinfo]
+name = "User Info"
+description = "Shows detailed information about a user"
+
+[responses]
+ping = "Pong!"
+info = "I'm Lorian, a Rust bot!"
+hello = "Hello, {username}!"
+help = "Available commands: /ping, /info, /hello, /help"
+unknown_command = "Unknown command"
+
+[embeds.ping]
+title = " Pong!"
+description = "Bot status and performance information"
+latency_field = "Latency"
+uptime_field = "Uptime"
+memory_field = "Memory Usage"
+latency_value = "{latency}ms"
+uptime_value = "{uptime}"
+memory_value = "{memory} MB"
+footer = "Lorian Bot • Online"
+thumbnail = "what_pointing"
+
+[embeds.images]
+title = "🖼️ Bot Images Gallery"
+description = "Available image categories and examples"
+footer = "Lorian Bot Images • {total_images} images available"
+
+[embeds.userinfo]
+title = " User Information"
+description = "Detailed information about {username}"
+user_id_field = "User ID"
+account_created_field = "Account Created"
+server_joined_field = "Server Joined" 
+roles_field = "Roles"
+status_field = "Status"
+activities_field = "Activities"
+premium_field = "Premium Since"
+no_roles = "No roles"
+no_activities = "No current activities"
+no_premium = "Not a premium member"
+footer = "User Info • Requested by {requester}"
+thumbnail = "talk_looking_at_camera"
+
+[errors]
+client_creation = "Error creating client"
+bot_start = "Error starting bot: {error}"
+token_missing = "DISCORD_TOKEN not set"
+
+[system]
+bot_connected = "{bot_name} is connected!"

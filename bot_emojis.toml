@@ -1,0 +1,74 @@
+# Lorian Bot Emojis Database
+# Organized by categories for easy access and management
+# Custom Discord Server Emojis
+
+[status]
+# Status and state indicators
+maintenance = "<:maintenance:1400579800816554106>"
+on = "<:on:1400579657245659156>"
+off = "<:off:1400579655638978621>"
+up = "<:up:1400579660408029235>"
+down = "<:down:1400579662161383594>"
+alert = "<:alert:1400579652464017509>"
+warn = "<:warn:1400579909793091644>"
+blocked = "<:blocked:1400579806810214440>"
+
+[confirmations]
+# Yes/No and confirmation emojis
+check = "<:check:1400579917875384492>"
+yes = "<:yes:1400579939677241384>"
+no = "<:no:1400579984174743682>"
+x_ = "<:x_:1400579949697695895>"
+
+[emotions]
+# Emotional expressions
+happy = "<:happy:1400581363001720912>"
+joy = "<:joy:1400581364780236950>"
+cry = "<:cry:1400581356446027797>"
+sob = "<:sob:1400581326058426590>"
+heart = "<:heart:1400579946593652778>"
+pray = "<:pray:1400579802548928552>"
+demon = "<:demon:1400581357708640357>"
+hallowen = "<:hallowen:1400581361500422336>"
+
+[technology]
+# Technology and programming related
+java = "<:java:1400579978852307064>"
+console = "<:console:1400579903602299001>"
+base = "<:base:1400581354160390296>"
+noteblock = "<:noteblock:1400579985940545548>"
+
+[actions]
+# Action and activity emojis
+buy = "<:buy:1400579798656618616>"
+download = "<:download:1400579943481606144>"
+paint = "<:paint:1400579659397071070>"
+list = "<:list:1400579982840959076>"
+rocket = "<:rocket:1400581315300036780>"
+kaboom = "<:kaboom:1400579980823625789>"
+fire = "<:fire:1400579945251471390>"
+cold = "<:cold:1400579919322415134>"
+
+[interface]
+# Interface and UI elements
+bell = "<:bell:1400579805371699282>"
+light = "<:light:1400581327916367882>"
+silent = "<:silent:1400581324665782353>"
+staff = "<:staff:1400579804012482681>"
+star = "<:star:1400579905854509106>"
+stats = "<:stats:1400579907167191051>"
+zzz = "<:zzz:1400579942034702367>"
+
+# Default emojis for common use cases
+[defaults]
+# Commonly used emojis for different scenarios
+success = "check"           # References confirmations.check
+error = "x_"               # References confirmations.x_
+warning = "warn"           # References status.warn
+loading = "zzz"            # References interface.zzz
+online = "on"              # References status.on
+offline = "off"            # References status.off
+maintenance = "maintenance" # References status.maintenance
+celebration = "star"        # References interface.star
+love = "heart"             # References emotions.heart
+admin = "staff"            # References interface.staff

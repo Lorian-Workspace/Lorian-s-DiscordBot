@@ -1,0 +1,59 @@
+# Lorian Bot Images Database
+# Organized by categories for easy access and management
+
+[avatar]
+# Main bot avatar images
+pointing = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526393778606140/Pointing.png?ex=689098ab&is=688f472b&hm=1887ce82cd24f78a621ac5b4d2b09670bb3f6a091d4a85c7ddda8b0d785312e0&"
+what_pointing = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526413676515450/What_pointing.png?ex=689098b0&is=688f4730&hm=feeee8b1454f95549e1077468743fd36aee8579f415e74c27eb259219ea90710&"
+standbye = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526394705412166/Standbye.png?ex=689098ab&is=688f472b&hm=c179a79f0e5d1842c583137542d632a337b21d1b3362a6ea7a5367daf8f10719&"
+head = "https://media.discordapp.net/attachments/1401526269967077428/1401526414842531861/head.png?ex=689098b0&is=688f4730&hm=799f37b740464d57ade002df8c5234e56df7b378e6c20b97d31b79cb73d69d36&=&format=webp&quality=lossless"
+
+[emotions]
+# Emotional expressions
+love = "https://media.discordapp.net/attachments/1401526269967077428/1401526392189096118/love.png?ex=689098aa&is=688f472a&hm=158cbbe0717aaaa6ff3d9f7c8f382b835b2746ff46597217b52c7a0f22475773&=&format=webp&quality=lossless"
+angry = "https://media.discordapp.net/attachments/1401526269967077428/1401526414351532132/angry.png?ex=689098b0&is=688f4730&hm=2bb4befcd9151683ea48dcccc68fa417a47907c6a063beae99260da3894f6b03&=&format=webp&quality=lossless"
+really_sad = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526394411814932/ReallySad.png?ex=689098ab&is=688f472b&hm=dee50f80e4b7894f1bf49d323c7ca0b4caae6f5c927dc6bd500b531118357d71&"
+dissapoiment = "https://media.discordapp.net/attachments/1401526269967077428/1401526414590742703/Dissapoiment.png?ex=689098b0&is=688f4730&hm=ba5e44f813b11a77c7405c2f648b7982547d10aac56b92658b1303d58916ebb9&=&format=webp&quality=lossless"
+thanks = "https://media.discordapp.net/attachments/1401526269967077428/1401526413089177660/thanks.png?ex=689098af&is=688f472f&hm=86edd4cfbd375e7c6b67b932ef08886fe29a0c042ca0651191dda00d5e20f49c&=&format=webp&quality=lossless"
+hand_on_heart = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526909036400694/HandonHeart.png?ex=68909926&is=688f47a6&hm=dfd43959306b5857edbf6eddd8bc16a347c14060759ea705bb37f7111f767074&"
+
+[reactions]
+# Reaction images for various situations
+wow_alert = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526413915328553/Wow.png?ex=689098b0&is=688f4730&hm=33d7c29d6eb7a4961b26426413d7788ac08fe1be149862a1afb16be9d4266553&"
+wow_hands_in_head = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526414158856192/Wow_2.png?ex=689098b0&is=688f4730&hm=a880406310cf1227b36ad7c0d92886d3af95b1b7a4cb3885e01eeec7a54c5820&"
+wow3 = "https://media.discordapp.net/attachments/1401526269967077428/1401526391517872168/Wow_3.png?ex=689098aa&is=688f472a&hm=e44150815e9e10573444f6d77586a94c169ca589a0d2b3969943cc45eda68299&=&format=webp&quality=lossless"
+what = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526413370200186/What.png?ex=689098b0&is=688f4730&hm=f6595ba22c74ee5ff6e4dc5c08a862af0c679d013e1c706ef92153f32da0ae7d&"
+nya = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526393183014934/nya.png?ex=689098ab&is=688f472b&hm=7e1925a59c9834d9e28c3f87b32ab328f31273d176d7ed927319df542dfa57ea&"
+nya_super_cute = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526393459707954/nya_2.png?ex=689098ab&is=688f472b&hm=fce3c5d5e47ec4899a5f22b2a3d210afdaeeeb91183a0cdd1988159f6deadd1b&"
+que_pro = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526394063949894/quePro.png?ex=689098ab&is=688f472b&hm=c27be7dcfff805b71743d23dedf55e703eaddbeaf86c85f4c48e48ac678c73cf&"
+
+[talking]
+# Images for when the bot is talking or communicating
+talk1 = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526888886698075/Talk_1.png?ex=68909921&is=688f47a1&hm=03274b1d11ad7fad3253be076e61d2d7f279aa1687ddfd3f8e1179e40ec13279&"
+talk2 = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526889125777499/Talk_2.png?ex=68909921&is=688f47a1&hm=7d9ad7ec3c4d8030ec0b3169960ac6841e8a17c60fb54f15af4878c656cbfca9&"
+talk3 = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526889369305188/Talk_3.png?ex=68909921&is=688f47a1&hm=29086aec4efbdd86fe07789ff35555a6b7516007704a95a5eca5ec95c33fb0cb&"
+talk_looking_at_camera = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526889591341086/Talk_4.png?ex=68909921&is=688f47a1&hm=a16cce4e58c3edbf04e30a3ee594a2e9d0c6a9df82ae4e886f445a149265a464&"
+talk5 = "https://media.discordapp.net/attachments/1401526269967077428/1401526412736987257/Talk_5.png?ex=689098af&is=688f472f&hm=edfdf11a56099bc16cb643ca43a97756a7b1d8176d84ea2bca9df555507c789e&=&format=webp&quality=lossless"
+
+[thinking]
+# Thoughtful or contemplative poses
+hmmm_thinking = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526415161163796/Hmmm.png?ex=689098b0&is=688f4730&hm=e396e1c60dc43c425d6899875aa996fb2ca74fccdd026e8d5d77e3eeadda027b&"
+
+[showing]
+# Images for displaying or presenting information
+showing1 = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526392583225484/Mostrando_1.png?ex=689098ab&is=688f472b&hm=ee32215f930485273996cb2a53b43efc41881a5c303808f661c4e726487f1ad5&"
+showing_finish = "https://media.discordapp.net/attachments/1401526269967077428/1401526392838946836/Mostrando_finish.png?ex=689098ab&is=688f472b&hm=9811f93984420468e793bfc20ab635b9d006394e29ef1c8c5b6d497ba8ddcdf4&=&format=webp&quality=lossless"
+
+[misc]
+# Miscellaneous images
+sunglass = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526420496322560/sunglass.png?ex=689098b1&is=688f4731&hm=d1b55c2ad488f67ca9dede8ef53e5dc2d0e72c7bce18b7d531137b7701bcc116&"
+
+# Default images for common use cases
+[defaults]
+# Commonly used images for different scenarios
+ping_embed = "avatar.what_pointing"  # References avatar.what_pointing
+error = "emotions.dissapoiment"       # References emotions.dissapoiment
+success = "emotions.thanks"           # References emotions.thanks
+loading = "thinking.hmmm_thinking"    # References thinking.hmmm_thinking
+info = "talking.talk_looking_at_camera"  # References talking.talk_looking_at_camera
+userinfo_embed = "talking.talk_looking_at_camera"  # References talking.talk_looking_at_camera

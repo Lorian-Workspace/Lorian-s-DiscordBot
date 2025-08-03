@@ -1,0 +1,34 @@
+[package]
+name = "lorian-discord-bot"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serenity = { version = "0.12", features = ["gateway", "http", "model", "client"] }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
+dotenv = "0.15"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
+# Optimize development builds for faster compilation
+[profile.dev]
+opt-level = 0
+debug = true
+debug-assertions = true
+overflow-checks = true
+lto = false
+panic = 'unwind'
+incremental = true
+codegen-units = 256
+
+# Faster builds for dependencies (they don't change often)
+[profile.dev.package."*"]
+opt-level = 1
+debug = false
