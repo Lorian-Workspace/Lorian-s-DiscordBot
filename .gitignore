@@ -28,3 +28,12 @@ logs/
 
 # Config files with sensitive data
 config.toml
+
+# Bot data files
+data/bot_data.json
+data/*.backup
+bot_data.json
+
+# Temporary files
+*.tmp
+*.temp

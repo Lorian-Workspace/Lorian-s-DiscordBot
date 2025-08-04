@@ -22,11 +22,43 @@ description = "Shows available bot images by category"
 name = "User Info"
 description = "Shows detailed information about a user"
 
+[commands.stats]
+name = "stats"
+description = "Shows bot statistics and usage data"
+
+[commands.purge]
+name = "purge"
+description = "Delete a specified number of messages from the channel"
+
+[commands.reminder]
+name = "reminder"
+description = "Set a reminder that will be sent to the designated channel"
+
+[commands.commission_setup]
+name = "commission_setup"
+description = "Setup the commission system message with buttons"
+
+[commands.commission_close]
+name = "commission_close"
+description = "Close the current commission channel"
+
+[commands.ticket_setup]
+name = "ticket_setup"
+description = "Setup the ticket system message with buttons"
+
+[commands.ticket_close]
+name = "ticket_close"
+description = "Close the current ticket channel"
+
+[commands.feedback_setup]
+name = "feedback_setup"
+description = "Setup the feedback system in the designated channel"
+
 [responses]
 ping = "Pong!"
 info = "I'm Lorian, a Rust bot!"
 hello = "Hello, {username}!"
-help = "Available commands: /ping, /info, /hello, /help"
+help = "Select a command from the dropdown menu below to learn more about it!"
 unknown_command = "Unknown command"
 
 [embeds.ping]
@@ -53,6 +85,8 @@ user_id_field = "User ID"
 account_created_field = "Account Created"
 server_joined_field = "Server Joined" 
 roles_field = "Roles"
+ai_summary_field = "AI Summary"
+no_ai_summary = "No AI summary available"
 status_field = "Status"
 activities_field = "Activities"
 premium_field = "Premium Since"
@@ -62,6 +96,151 @@ no_premium = "Not a premium member"
 footer = "User Info • Requested by {requester}"
 thumbnail = "talk_looking_at_camera"
 
+[embeds.purge]
+title = "🧹 Message Purge"
+description = "Messages have been successfully deleted"
+success_message = "Successfully deleted {count} messages from this channel"
+error_permission = "You don't have permission to delete messages in this channel"
+error_invalid_amount = "Please provide a valid number between 1 and 100"
+error_failed = "Failed to delete messages: {error}"
+footer = "Purge Command • {count} messages deleted"
+
+[embeds.reminder]
+title = " Reminder Set"
+description = "Your reminder has been successfully created"
+success_message = "Reminder set for {time}"
+time_field = "Reminder Time"
+message_field = "Message"
+channel_field = "Will be sent to"
+visibility_field = "Visibility"
+mention_field = "Mentions"
+status_field = "Status Tracking"
+error_invalid_time = "Please provide a valid time format (e.g., '5m', '2h', '1d')"
+error_no_channel = "No reminder channel configured. Please contact an administrator"
+error_permission = "You don't have permission to create reminders. Only administrators can use this command."
+error_failed = "Failed to create reminder: {error}"
+footer = "Reminder System • ID: {id}"
+visibility_public = "Public (everyone can see)"
+visibility_private = "Private (only you can see)"
+mention_none = "No mentions"
+mention_creator = "Mention creator"
+mention_everyone = "Mention everyone"
+status_enabled = "Enabled (dropdown menu)"
+status_disabled = "Disabled"
+
+[embeds.reminder_notification]
+title = " Reminder"
+description = "You asked me to remind you:"
+user_field = "For"
+created_field = "Created"
+footer = "Reminder System • On time as always!"
+
+[embeds.commission]
+title = "💼 Commission Services"
+description = "Ready to bring your ideas to life? Click the button below to start a commission discussion!"
+how_it_works_title = "How it works:"
+how_it_works_step1 = "1️⃣ Click 'Start Commission' below"
+how_it_works_step2 = "2️⃣ A private channel will be created for you"
+how_it_works_step3 = "3️⃣ Discuss your project directly with TheLorian"
+how_it_works_step4 = "4️⃣ Get a personalized quote and timeline"
+services_title = "Services offered:"
+services_web = "🌐 Web Development"
+services_design = "🎨 UI/UX Design"
+services_programming = "💻 Custom Programming"
+services_consulting = "📋 Technical Consulting"
+contact_info = "Direct contact: the_lorian@centaury.net"
+footer = "TheLorian's Commission Services • Professional & Reliable"
+button_text = "💼 Start Commission"
+
+[embeds.commission_created]
+title = "✅ Commission Channel Created"
+description = "Welcome to your private commission channel! Here you can discuss your project ideas, requirements, and get a personalized quote."
+welcome_message = "Hi {username}! 👋\n\nThank you for your interest in commissioning work. This is your private channel where we can discuss:\n\n• Project requirements\n• Timeline and budget\n• Technical specifications\n• Any questions you might have"
+next_steps_title = "Next Steps:"
+next_steps_1 = "📝 Tell me about your project"
+next_steps_2 = "💭 Share your ideas and requirements"
+next_steps_3 = "⏰ Discuss timeline and budget"
+next_steps_4 = "📧 Continue communication via email if needed"
+contact_info_field = "Direct Contact"
+contact_info_value = "the_lorian@centaury.net"
+close_button_text = "🔒 Close Commission"
+footer = "Commission System • Created for {username}"
+
+[embeds.commission_closed]
+title = "🔒 Commission Closed"
+description = "This commission channel has been closed. Thank you for considering TheLorian's services!"
+closed_by_field = "Closed by"
+closed_at_field = "Closed at"
+contact_reminder = "For future inquiries, feel free to contact: thelorian@centaury.net"
+footer = "Commission System • Thank you for your interest!"
+
+[embeds.help]
+title = "📚 Bot Help & Commands"
+description = "Welcome to TheLorian's Bot! Select a command from the dropdown below to learn more."
+footer = "TheLorian's Bot • Use the dropdown to explore commands"
+select_placeholder = "Choose a command to learn about..."
+select_description = "Get detailed information about this command"
+
+[embeds.help.commands.ping]
+title = "🏓 Ping Command"
+description = "Check the bot's latency and status information"
+usage = "Usage: `/ping`"
+details = "This command shows the bot's response time, uptime, and memory usage. Useful for checking if the bot is working properly."
+
+[embeds.help.commands.info]
+title = "ℹ️ Info Command"
+description = "Get basic information about the bot"
+usage = "Usage: `/info`"
+details = "Shows general information about TheLorian's Bot and its purpose."
+
+[embeds.help.commands.hello]
+title = "👋 Hello Command"
+description = "Get a personalized greeting from the bot"
+usage = "Usage: `/hello`"
+details = "The bot will greet you with a friendly message using your username."
+
+[embeds.help.commands.stats]
+title = "📊 Stats Command"
+description = "View detailed bot usage statistics"
+usage = "Usage: `/stats`"
+details = "Shows conversation counts, message statistics, and other bot usage data."
+
+[embeds.help.commands.images]
+title = "🖼️ Images Command"
+description = "Browse the bot's image gallery"
+usage = "Usage: `/images`"
+details = "Shows all available image categories and counts. The bot uses these images in various responses."
+
+[embeds.help.commands.userinfo]
+title = "👤 User Info Command"
+description = "Get detailed information about a user"
+usage = "Usage: Right-click a user → Apps → User Info"
+details = "Shows user details including account creation date, server join date, roles, and AI conversation summary if available."
+
+[embeds.help.commands.purge]
+title = "🧹 Purge Command"
+description = "Delete multiple messages from a channel"
+usage = "Usage: `/purge amount:10`"
+details = "Deletes a specified number of messages (1-100) from the current channel. Requires 'Manage Messages' permission. Messages older than 14 days cannot be bulk deleted due to Discord limitations."
+
+[embeds.help.commands.reminder]
+title = "⏰ Reminder Command"
+description = "Set a reminder for the future"
+usage = "Usage: `/reminder time:30m message:Take a break`"
+details = "Sets a reminder that will be sent to the designated reminder channel. Time formats: 5m (minutes), 2h (hours), 1d (days). You can use the command from any channel, but the reminder will be posted in the configured reminder channel."
+
+[embeds.help.commands.commission_setup]
+title = "💼 Commission Setup Command"
+description = "Setup the commission system message"
+usage = "Usage: `/commission_setup`"
+details = "Creates the commission system message with a button in the designated commission channel. Only administrators can use this command."
+
+[embeds.help.commands.commission_close]
+title = "🔒 Commission Close Command"
+description = "Close the current commission channel"
+usage = "Usage: `/commission_close`"
+details = "Closes the current commission channel. Can only be used within commission channels by the channel creator or administrators."
+
 [errors]
 client_creation = "Error creating client"
 bot_start = "Error starting bot: {error}"
@@ -69,3 +248,130 @@ token_missing = "DISCORD_TOKEN not set"
 
 [system]
 bot_connected = "{bot_name} is connected!"
+
+# AI System Translations
+[ai.embeds]
+title_format = "TheLorian's Assistant"
+footer_format = "Responding to {username} • {emotion_emoji}"
+no_context = "No previous conversation."
+
+[ai.emotions]
+happy = "Happy"
+excited = "Excited" 
+helpful = "Helpful"
+thoughtful = "Thoughtful"
+curious = "Curious"
+friendly = "Friendly"
+professional = "Professional"
+creative = "Creative"
+encouraging = "Encouraging"
+neutral = "Neutral"
+
+[ai.prompt]
+system_intro = "You are an AI assistant representing {owner_name}. Here's information about him:"
+owner_name_label = "Name"
+owner_email_label = "Email"
+owner_skills_label = "Specialties"
+owner_bio_label = "Biography"
+assistant_instruction = "You should respond as if you were {owner_name}'s personal assistant, helping users with information about his services and being helpful and friendly."
+emojis_header = "Available emojis you can use (but don't overuse them, use them in moderation):"
+emoji_active_status = "Active status"
+emoji_alert = "Alert"
+emoji_warning = "Warning"
+emoji_correct = "Correct"
+emoji_yes = "Yes"
+emoji_no = "No"
+emoji_happy = "Happy"
+emoji_love = "Love/Like"
+emoji_thanks = "Thanks/Pray"
+emoji_programming = "Programming/Console"
+emoji_java = "Java/Programming"
+emoji_success = "Success/Launch"
+emoji_great = "Great/Fire"
+emoji_art = "Art/Design"
+emoji_star = "Star/Favorite"
+emoji_stats = "Statistics"
+emojis_instruction = "Use these emojis when appropriate, but in moderation. Don't use many in a single response."
+context_header = "Previous conversation context:"
+user_message_format = "User: {message}\n\nRespond helpfully and friendly:"
+
+[ai.messages]
+context_saved = "AI conversation context saved for user {user_id}"
+response_generated = "AI responded to {username} in channel {channel_id}"
+error_generating = "Error generating AI response: {error}"
+error_saving_context = "Error saving conversation context: {error}"
+
+[ai.data]
+stats_header = "📊 **Data Statistics**"
+button_messages_label = "🔘 Button Messages: {count}"
+conversations_label = "💬 Active Conversations: {count}"
+total_messages_label = "📝 Total AI Messages: {count}"
+last_updated_label = "🕒 Last Updated: <t:{timestamp}:R>"
+
+[commission.messages]
+setup_success = "Commission system message created successfully in {channel}!"
+setup_error_permission = "You don't have permission to setup commission messages. Only administrators can use this command."
+setup_error_channel = "Could not find the commission channel. Please check the COMMISSION_CHANNEL_ID configuration."
+channel_created = "Commission channel created for {username}"
+channel_creation_failed = "Failed to create commission channel: {error}"
+close_success = "Commission channel closed successfully"
+close_error_not_commission = "This command can only be used in commission channels"
+close_error_permission = "You don't have permission to close this commission"
+close_error_failed = "Failed to close commission channel: {error}"
+already_has_commission = "You already have an active commission channel: {channel}"
+
+[ticket.embeds.setup]
+title = "🎫 Support Ticket System"
+description = "Need help or have questions? Click the button below to create a private support ticket. Our team will assist you as soon as possible!"
+button_text = "Create Ticket"
+footer = "TheLorian's Support • Click the button to get help"
+thumbnail = "default"
+
+[ticket.embeds.created]
+title = "🎫 Ticket Created Successfully"
+description = "Welcome to your support ticket! Please describe your issue or question in detail. Our team has been notified and will respond shortly."
+footer = "Support Ticket • {ticket_id}"
+close_button_text = "Close Ticket"
+
+[ticket.messages]
+setup_success = "Ticket system message created successfully in {channel}!"
+setup_error_permission = "You don't have permission to setup ticket messages. Only administrators can use this command."
+setup_error_channel = "Could not find the ticket channel. Please check the TICKET_CHANNEL_ID configuration."
+channel_created = "Ticket channel created for {username}"
+channel_creation_failed = "Failed to create ticket channel: {error}"
+close_success = "Ticket channel closed successfully"
+close_error_not_ticket = "This command can only be used in ticket channels"
+close_error_permission = "You don't have permission to close this ticket"
+close_error_failed = "Failed to close ticket channel: {error}"
+already_has_ticket = "You already have an active ticket channel: {channel}"
+owner_notification = "🎫 New ticket created by {username} in {channel}"
+
+# Feedback System Translations
+[feedback.embeds.setup]
+title = "Community Feedback System"
+description = "Share your thoughts, ideas, and feedback with the community! Post your message in this channel and the community will vote on it."
+how_it_works_title = "📋 How it works:"
+how_it_works_step1 = "1️⃣ Post your feedback or idea in this channel"
+how_it_works_step2 = "2️⃣ Your message will be converted to a voting embed"
+how_it_works_step3 = "3️⃣ Community members vote with ⬆️ or ⬇️"
+how_it_works_step4 = "4️⃣ Star rating updates automatically based on votes"
+rating_system_title = "⭐ Rating System:"
+rating_upvote = "⬆️ Upvote - Increases star rating"
+rating_downvote = "⬇️ Downvote - Decreases star rating"
+rating_stars = "⭐❌ 5-star system based on vote ratio"
+footer = "TheLorian's Feedback System • Share your voice"
+thumbnail = "reactions_wow_alert"
+
+[feedback.embeds.message]
+title = "Community Feedback"
+rating_field = "Community Rating"
+footer = "Feedback System"
+
+[feedback.messages]
+setup_error_permission_title = "❌ Permission Denied"
+setup_error_permission = "You don't have permission to setup the feedback system. Only administrators can use this command."
+setup_success_title = "Feedback System Setup Complete"
+setup_success = "Feedback system has been successfully set up in"
+setup_success_footer = "Feedback system is now active"
+content_filtered = "your message was removed due to inappropriate content."
+no_votes_yet = "No votes yet"
