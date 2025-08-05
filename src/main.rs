@@ -355,25 +355,24 @@ impl EventHandler for Handler {
             return;
         }
 
-        // Check if this is a message in the AI channel or a ticket channel
-        let should_process = self.ai_manager.should_process_message(&msg.channel_id.to_string(), &msg.author.id.to_string()) ||
-            self.data_manager.is_ticket_channel(&msg.channel_id.to_string());
+        // Check if this is a message in the AI channel (tickets excluded)
+        let should_process = self.ai_manager.should_process_message(&msg.channel_id.to_string(), &msg.author.id.to_string());
             
         if should_process {
             if let Err(e) = self.handle_ai_message(&ctx, &msg).await {
                 eprintln!("{}", self.lang.format_ai_error_generating(&e.to_string()));
             }
+        }
+
+        // Handle ticket channel notifications separately (without AI responses)
+        if self.data_manager.is_ticket_channel(&msg.channel_id.to_string()) {
+            const OWNER_ID: &str = "1400464001133056111";
             
-            // If this is a ticket channel, notify the owner
-            if self.data_manager.is_ticket_channel(&msg.channel_id.to_string()) {
-                const OWNER_ID: &str = "1400464001133056111";
-                
-                // Only mention if the message author is not the owner
-                if msg.author.id.to_string() != OWNER_ID {
-                    // Send a simple mention to notify the owner (optional, can be removed if too spammy)
-                    // let mention_content = format!("<@{}>", OWNER_ID);
-                    // let _ = msg.channel_id.say(&ctx.http, &mention_content).await;
-                }
+            // Only mention if the message author is not the owner
+            if msg.author.id.to_string() != OWNER_ID {
+                // Send a simple mention to notify the owner (optional, can be removed if too spammy)
+                // let mention_content = format!("<@{}>", OWNER_ID);
+                // let _ = msg.channel_id.say(&ctx.http, &mention_content).await;
             }
         }
     }
