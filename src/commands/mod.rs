@@ -88,7 +88,7 @@ pub async fn handle_purge_command(
             let response = CreateInteractionResponse::Message(
                 CreateInteractionResponseMessage::new().embed(embed)
             );
-            command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+            command.create_response(&ctx.http, response).await?;
             return Ok(());
         }
     } else {
@@ -101,7 +101,7 @@ pub async fn handle_purge_command(
         let response = CreateInteractionResponse::Message(
             CreateInteractionResponseMessage::new().embed(embed)
         );
-        command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+        command.create_response(&ctx.http, response).await?;
         return Ok(());
     };
 
@@ -115,7 +115,7 @@ pub async fn handle_purge_command(
         let response = CreateInteractionResponse::Message(
             CreateInteractionResponseMessage::new().embed(embed)
         );
-        command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+        command.create_response(&ctx.http, response).await?;
         return Ok(());
     }
 
@@ -140,7 +140,7 @@ pub async fn handle_purge_command(
                 let response = CreateInteractionResponse::Message(
                     CreateInteractionResponseMessage::new().embed(embed)
                 );
-                command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+                command.create_response(&ctx.http, response).await?;
                 return Ok(());
             }
         }
@@ -160,7 +160,7 @@ pub async fn handle_purge_command(
                 let response = CreateInteractionResponse::Message(
                     CreateInteractionResponseMessage::new().embed(embed)
                 );
-                command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+                command.create_response(&ctx.http, response).await?;
                 return Ok(());
             }
 
@@ -179,7 +179,7 @@ pub async fn handle_purge_command(
                             .embed(embed)
                             .ephemeral(true) // Make it ephemeral so only the user can see it
                     );
-                    command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+                    command.create_response(&ctx.http, response).await?;
                 }
                 Err(e) => {
                     let error_msg = format!("Failed to delete messages: {}", e);
@@ -191,7 +191,7 @@ pub async fn handle_purge_command(
                     let response = CreateInteractionResponse::Message(
                         CreateInteractionResponseMessage::new().embed(embed)
                     );
-                    command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+                    command.create_response(&ctx.http, response).await?;
                 }
             }
         }
@@ -205,7 +205,7 @@ pub async fn handle_purge_command(
             let response = CreateInteractionResponse::Message(
                 CreateInteractionResponseMessage::new().embed(embed)
             );
-            command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+            command.create_response(&ctx.http, response).await?;
         }
     }
 
@@ -266,7 +266,7 @@ pub async fn handle_reminder_command(
                 let response = CreateInteractionResponse::Message(
                     CreateInteractionResponseMessage::new().embed(embed)
                 );
-                command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+                command.create_response(&ctx.http, response).await?;
                 return Ok(());
             }
         }
@@ -320,7 +320,7 @@ pub async fn handle_reminder_command(
         let response = CreateInteractionResponse::Message(
             CreateInteractionResponseMessage::new().embed(embed)
         );
-        command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+        command.create_response(&ctx.http, response).await?;
         return Ok(());
     }
 
@@ -334,7 +334,7 @@ pub async fn handle_reminder_command(
         let response = CreateInteractionResponse::Message(
             CreateInteractionResponseMessage::new().embed(embed)
         );
-        command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+        command.create_response(&ctx.http, response).await?;
         return Ok(());
     }
 
@@ -350,7 +350,7 @@ pub async fn handle_reminder_command(
             let response = CreateInteractionResponse::Message(
                 CreateInteractionResponseMessage::new().embed(embed)
             );
-            command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+            command.create_response(&ctx.http, response).await?;
             return Ok(());
         }
     };
@@ -424,7 +424,7 @@ pub async fn handle_reminder_command(
         let response = CreateInteractionResponse::Message(
             CreateInteractionResponseMessage::new().embed(embed)
         );
-        command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+        command.create_response(&ctx.http, response).await?;
     } else {
         let embed = CreateEmbed::new()
             .title(&lang_msgs.embeds.reminder.title)
@@ -434,144 +434,8 @@ pub async fn handle_reminder_command(
         let response = CreateInteractionResponse::Message(
             CreateInteractionResponseMessage::new().embed(embed)
         );
-        command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
+        command.create_response(&ctx.http, response).await?;
     }
 
-    Ok(())
-}
-
-/// Handle the /toggle_ai command
-pub async fn handle_toggle_ai_command(
-    ctx: &Context,
-    command: &CommandInteraction,
-    data_manager: &DataManager,
-    _lang: &LanguageManager,
-    images: &crate::lang::ImageManager,
-    _emojis: &crate::lang::EmojiManager,
-) -> Result<(), String> {
-    let channel_id = command.channel_id.to_string();
-    
-    // Check if this is a ticket channel or the user is the owner
-    const OWNER_ID: &str = "1400464001133056111";
-    let is_owner = command.user.id.to_string() == OWNER_ID;
-    let is_ticket_channel = data_manager.is_ticket_channel(&channel_id);
-    let is_ticket_creator = data_manager.is_ticket_creator(&channel_id, &command.user.id.to_string());
-    
-    // Only allow ticket creators, owner, or admins to use this command
-    let has_permission = if is_owner {
-        true
-    } else if is_ticket_channel && is_ticket_creator {
-        true
-    } else if let Some(guild_id) = command.guild_id {
-        if let Ok(member) = guild_id.member(&ctx.http, command.user.id).await {
-            if let Some(guild) = ctx.cache.guild(guild_id) {
-                let permissions = guild.member_permissions(&member);
-                permissions.contains(Permissions::ADMINISTRATOR)
-            } else {
-                false
-            }
-        } else {
-            false
-        }
-    } else {
-        false
-    };
-    
-    if !has_permission {
-        let embed = CreateEmbed::new()
-            .title("🤖 Toggle AI")
-            .description("❌ You don't have permission to use this command. Only the ticket creator, server owner, or administrators can toggle AI in tickets.")
-            .color(Color::RED);
-        
-        let response = CreateInteractionResponse::Message(
-            CreateInteractionResponseMessage::new()
-                .embed(embed)
-                .ephemeral(true)
-        );
-        command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
-        return Ok(());
-    }
-    
-    // If not in a ticket channel, show info about the command
-    if !is_ticket_channel {
-        let embed = CreateEmbed::new()
-            .title("🤖 Toggle AI")
-            .description("ℹ️ This command can only be used in ticket channels to enable or disable AI responses.\n\nUse this command in a ticket channel to toggle AI participation.")
-            .color(Color::ORANGE);
-        
-        let response = CreateInteractionResponse::Message(
-            CreateInteractionResponseMessage::new()
-                .embed(embed)
-                .ephemeral(true)
-        );
-        command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
-        return Ok(());
-    }
-    
-    // Toggle AI state
-    match data_manager.toggle_ai_enabled(&channel_id) {
-        Ok(new_state) => {
-            let (title, description, color) = if new_state {
-                (
-                    "🤖✅ AI Enabled",
-                    "AI responses have been **enabled** in this ticket channel. The AI will now respond to messages and help with your questions.",
-                    Color::from_rgb(0, 255, 127) // Green
-                )
-            } else {
-                (
-                    "🤖❌ AI Disabled", 
-                    "AI responses have been **disabled** in this ticket channel. The AI will no longer respond to messages, saving tokens.",
-                    Color::from_rgb(255, 165, 0) // Orange
-                )
-            };
-            
-            // Get a relevant image
-            let thumbnail_url = if new_state {
-                images.get_image("reactions", "happy")
-                    .or_else(|| images.get_image("reactions", "success"))
-            } else {
-                images.get_image("reactions", "sleeping")
-                    .or_else(|| images.get_image("avatar", "neutral"))
-            }
-            .unwrap_or(&"https://cdn.discordapp.com/embed/avatars/0.png".to_string())
-            .clone();
-            
-            let embed = CreateEmbed::new()
-                .title(title)
-                .description(description)
-                .color(color)
-                .thumbnail(thumbnail_url)
-                .field("🔄 Status", if new_state { "Enabled" } else { "Disabled" }, true)
-                .field("💡 Tip", "You can use this command again to toggle the AI state.", true)
-                .footer(serenity::builder::CreateEmbedFooter::new("Toggle AI • Use responsibly to save tokens"))
-                .timestamp(chrono::Utc::now());
-            
-            let response = CreateInteractionResponse::Message(
-                CreateInteractionResponseMessage::new().embed(embed)
-            );
-            command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
-            
-            println!("🤖 AI toggled {} in channel {} by user {}", 
-                if new_state { "ON" } else { "OFF" }, 
-                channel_id, 
-                command.user.name
-            );
-        }
-        Err(e) => {
-            eprintln!("Error toggling AI state: {}", e);
-            let embed = CreateEmbed::new()
-                .title("🤖❌ Error")
-                .description("Failed to toggle AI state. Please try again later.")
-                .color(Color::RED);
-            
-            let response = CreateInteractionResponse::Message(
-                CreateInteractionResponseMessage::new()
-                    .embed(embed)
-                    .ephemeral(true)
-            );
-            command.create_response(&ctx.http, response).await.map_err(|e| format!("Discord API error: {}", e))?;
-        }
-    }
-    
     Ok(())
 } 

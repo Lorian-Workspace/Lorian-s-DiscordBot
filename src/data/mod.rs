@@ -51,8 +51,6 @@ pub struct BotData {
     pub reminders: HashMap<String, Reminder>,
     /// Feedback messages
     pub feedback_messages: HashMap<String, FeedbackMessage>,
-    /// AI enabled/disabled state per channel (channel_id -> enabled)
-    pub ai_enabled_channels: HashMap<String, bool>,
     /// Last update timestamp
     pub last_updated: DateTime<Utc>,
 }
@@ -64,7 +62,6 @@ impl BotData {
             conversations: HashMap::new(),
             reminders: HashMap::new(),
             feedback_messages: HashMap::new(),
-            ai_enabled_channels: HashMap::new(),
             last_updated: Utc::now(),
         }
     }

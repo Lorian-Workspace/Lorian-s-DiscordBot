@@ -54,10 +54,6 @@ description = "Close the current ticket channel"
 name = "feedback_setup"
 description = "Setup the feedback system in the designated channel"
 
-[commands.toggle_ai]
-name = "toggle_ai"
-description = "Toggle AI responses in ticket channels"
-
 [responses]
 ping = "Pong!"
 info = "I'm Lorian, a Rust bot!"

@@ -336,8 +336,6 @@ impl EventHandler for Handler {
                 .description(&lang_msgs.commands.ticket_close.description),
             CreateCommand::new(&lang_msgs.commands.feedback_setup.name)
                 .description(&lang_msgs.commands.feedback_setup.description),
-            CreateCommand::new("toggle_ai")
-                .description("Toggle AI responses in ticket channels"),
         ];
 
         let _ = Command::set_global_commands(&ctx.http, commands).await;
@@ -357,10 +355,9 @@ impl EventHandler for Handler {
             return;
         }
 
-        // Check if this is a message in the AI channel or a ticket channel with AI enabled
-        let channel_id_str = &msg.channel_id.to_string();
-        let should_process = self.ai_manager.should_process_message(channel_id_str, &msg.author.id.to_string()) ||
-            (self.data_manager.is_ticket_channel(channel_id_str) && self.data_manager.is_ai_enabled(channel_id_str));
+        // Check if this is a message in the AI channel or a ticket channel
+        let should_process = self.ai_manager.should_process_message(&msg.channel_id.to_string(), &msg.author.id.to_string()) ||
+            self.data_manager.is_ticket_channel(&msg.channel_id.to_string());
             
         if should_process {
             if let Err(e) = self.handle_ai_message(&ctx, &msg).await {
@@ -643,16 +640,6 @@ impl EventHandler for Handler {
                         eprintln!("Error handling feedback setup command: {}", e);
                         let data = CreateInteractionResponseMessage::new()
                             .content("Error setting up feedback system.");
-                        let builder = CreateInteractionResponse::Message(data);
-                        let _ = command.create_response(&ctx.http, builder).await;
-                    }
-                },
-                "toggle_ai" => {
-                    // Handle toggle AI command
-                    if let Err(e) = commands::handle_toggle_ai_command(&ctx, &command, &self.data_manager, &self.lang, &self.images, &self.emojis).await {
-                        eprintln!("Error handling toggle AI command: {}", e);
-                        let data = CreateInteractionResponseMessage::new()
-                            .content(&format!("Error toggling AI state: {}", e));
                         let builder = CreateInteractionResponse::Message(data);
                         let _ = command.create_response(&ctx.http, builder).await;
                     }
