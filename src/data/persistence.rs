@@ -432,7 +432,44 @@ impl DataManager {
             for message_id in message_ids_to_remove {
                 data.button_messages.remove(&message_id);
             }
+            
+            // Also clean up AI enabled state for this channel
+            data.ai_enabled_channels.remove(channel_id);
         })
+    }
+
+    /// Set AI enabled/disabled state for a channel
+    pub fn set_ai_enabled(&self, channel_id: &str, enabled: bool) -> Result<(), String> {
+        self.update_data(|data| {
+            data.ai_enabled_channels.insert(channel_id.to_string(), enabled);
+        }).map_err(|e| format!("Failed to set AI state: {}", e))
+    }
+
+    /// Get AI enabled state for a channel (default: true for tickets, false for other channels)
+    pub fn is_ai_enabled(&self, channel_id: &str) -> bool {
+        let data = self.data.lock().unwrap();
+        
+        // Check if there's an explicit setting for this channel
+        if let Some(&enabled) = data.ai_enabled_channels.get(channel_id) {
+            return enabled;
+        }
+        
+        // For ticket channels, default to enabled
+        if self.is_ticket_channel(channel_id) {
+            return true;
+        }
+        
+        // For other channels, default to disabled
+        false
+    }
+
+    /// Toggle AI enabled state for a channel and return the new state
+    pub fn toggle_ai_enabled(&self, channel_id: &str) -> Result<bool, String> {
+        let current_state = self.is_ai_enabled(channel_id);
+        let new_state = !current_state;
+        
+        self.set_ai_enabled(channel_id, new_state)?;
+        Ok(new_state)
     }
 }
 
