@@ -134,7 +134,7 @@ impl OwnerInfo {
                 "Technology Consulting".to_string(),
             ],
             bio: "Passionate and creative developer specialized in innovative technological solutions. Expert in creating Discord bots, web applications, and providing consulting services for unique projects.".to_string(),
-            discord_id: "1400464001133056111".to_string(),
+            discord_id: crate::config::OWNER_ID.to_string(),
             personality: Some("Functional and direct, with adjustable humor levels like TARS. Intelligent and capable, but doesn't rub it in your face (much).".to_string()),
             communication_style: Some("Formal, precise, with a touch of elegant British sarcasm. Quick responses with confidence.".to_string()),
             specialties_focus: Some("Technology solutions, bot development, and creative projects".to_string()),

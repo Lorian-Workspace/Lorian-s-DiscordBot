@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    name: Release Linux x86_64
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag matches Cargo.toml
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          CARGO_VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "❌ Tag v$TAG_VERSION does not match Cargo.toml version v$CARGO_VERSION"
+            exit 1
+          fi
+          echo "✅ Tag matches Cargo.toml: v$TAG_VERSION"
+
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --target x86_64-unknown-linux-gnu
+          rustup default stable
+
+      - name: Run tests
+        run: cargo test --locked --release
+
+      - name: Build release binary
+        run: cargo build --locked --release --target x86_64-unknown-linux-gnu
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          cp target/x86_64-unknown-linux-gnu/release/lorian-discord-bot release/lorian-discord-bot-x86_64-unknown-linux-gnu
+          cd release
+          sha256sum lorian-discord-bot-x86_64-unknown-linux-gnu > lorian-discord-bot-x86_64-unknown-linux-gnu.sha256
+          cd ..
+
+      - name: Verify checksum
+        run: |
+          cd release
+          sha256sum -c lorian-discord-bot-x86_64-unknown-linux-gnu.sha256
+          cd ..
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          gh release create "$TAG_NAME" \
+            --title "Release $TAG_NAME" \
+            --verify-tag \
+            --generate-notes \
+            release/lorian-discord-bot-x86_64-unknown-linux-gnu \
+            release/lorian-discord-bot-x86_64-unknown-linux-gnu.sha256

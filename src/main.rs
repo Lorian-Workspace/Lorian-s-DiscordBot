@@ -18,6 +18,8 @@ mod data;
 mod ai;
 mod commands;
 mod events;
+mod config;
+mod updater;
 
 use lang::{LanguageManager, ImageManager, EmojiManager};
 use data::{DataManager, AIMessage, MessageRole};
@@ -354,6 +356,8 @@ impl EventHandler for Handler {
                 .description(&lang_msgs.commands.ticket_close.description),
             CreateCommand::new(&lang_msgs.commands.feedback_setup.name)
                 .description(&lang_msgs.commands.feedback_setup.description),
+            CreateCommand::new("update")
+                .description("Check for and apply bot updates (owner only)"),
         ];
 
         let _ = Command::set_global_commands(&ctx.http, commands).await;
@@ -398,12 +402,10 @@ impl EventHandler for Handler {
 
         // Handle ticket channel notifications separately (without AI responses)
         if self.data_manager.is_ticket_channel(&msg.channel_id.to_string()) {
-            const OWNER_ID: &str = "1400464001133056111";
-            
             // Only mention if the message author is not the owner
-            if msg.author.id.to_string() != OWNER_ID {
+            if msg.author.id.get() != crate::config::OWNER_ID {
                 // Send a simple mention to notify the owner (optional, can be removed if too spammy)
-                // let mention_content = format!("<@{}>", OWNER_ID);
+                // let mention_content = format!("<@{}>", crate::config::OWNER_ID);
                 // let _ = msg.channel_id.say(&ctx.http, &mention_content).await;
             }
         }
@@ -671,6 +673,16 @@ impl EventHandler for Handler {
                         eprintln!("Error handling feedback setup command: {}", e);
                         let data = CreateInteractionResponseMessage::new()
                             .content("Error setting up feedback system.");
+                        let builder = CreateInteractionResponse::Message(data);
+                        let _ = command.create_response(&ctx.http, builder).await;
+                    }
+                },
+                "update" => {
+                    // Handle update command
+                    if let Err(e) = commands::handle_update_command(&ctx, &command).await {
+                        eprintln!("Error handling update command: {}", e);
+                        let data = CreateInteractionResponseMessage::new()
+                            .content("Error checking for updates.");
                         let builder = CreateInteractionResponse::Message(data);
                         let _ = command.create_response(&ctx.http, builder).await;
                     }
@@ -1001,6 +1013,61 @@ async fn main() {
             }
         }
     });
+
+    // Start auto-update task (release builds only)
+    #[cfg(not(debug_assertions))]
+    {
+        let auto_update_enabled = std::env::var("AUTO_UPDATE_ENABLED")
+            .map(|v| v != "false")
+            .unwrap_or(true);
+
+        if auto_update_enabled {
+            tokio::spawn(async {
+                // Initial delay: 5 minutes after startup
+                tokio::time::sleep(Duration::from_secs(300)).await;
+
+                loop {
+                    // Check if auto-update is still enabled
+                    if std::env::var("AUTO_UPDATE_ENABLED").as_deref() == Ok("false") {
+                        eprintln!("Auto-update disabled via AUTO_UPDATE_ENABLED=false");
+                        break;
+                    }
+
+                    // Try to acquire lock (non-blocking)
+                    let lock = match updater::try_acquire_lock() {
+                        Some(lock) => lock,
+                        None => {
+                            eprintln!("Auto-update skipped: lock busy");
+                            tokio::time::sleep(Duration::from_secs(6 * 3600)).await;
+                            continue;
+                        }
+                    };
+
+                    // Check for update
+                    match updater::check_for_update().await {
+                        Ok(Some(update)) => {
+                            eprintln!("Auto-update available: v{}", update.version);
+                            if let Err(e) = updater::apply_update(&update).await {
+                                eprintln!("Auto-update failed: {}", e);
+                            }
+                            // exec happens on success, this line never reached
+                        }
+                        Ok(None) => {
+                            // Already up to date, no log needed
+                        }
+                        Err(e) => {
+                            eprintln!("Auto-update check failed: {}", e);
+                        }
+                    }
+
+                    drop(lock);
+
+                    // Sleep 6 hours
+                    tokio::time::sleep(Duration::from_secs(6 * 3600)).await;
+                }
+            });
+        }
+    }
         
     if let Err(why) = client.start().await {
         println!("Error starting bot: {:?}", why);

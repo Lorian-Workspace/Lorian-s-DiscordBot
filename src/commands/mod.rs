@@ -3,6 +3,7 @@ pub mod help;
 pub mod commission;
 pub mod ticket;
 pub mod feedback;
+pub mod update;
 
 use serenity::all::{
     CreateEmbed, CreateEmbedFooter, CreateInteractionResponse, CreateInteractionResponseMessage, 
@@ -35,6 +36,9 @@ pub use feedback::{
     handle_feedback_setup_command, handle_feedback_message, handle_feedback_reaction_add,
     handle_feedback_reaction_remove, is_feedback_channel
 };
+
+// Re-export update function
+pub use update::handle_update_command;
 
 /// Handle the /stats command
 pub async fn handle_stats_command(

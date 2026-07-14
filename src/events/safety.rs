@@ -48,7 +48,7 @@ impl SafetyConfig {
         let unverified_role_id = RoleId::new(env_id("UNVERIFIED_ROLE_ID")?);
         let verified_role_id = RoleId::new(env_id("VERIFIED_ROLE_ID")?);
         let subscriber_role_id = RoleId::new(env_id("SUBSCRIBER_ROLE_ID")?);
-        let owner_id = UserId::new(env_id("DISCORD_OWNER_ID")?);
+        let owner_id = UserId::new(crate::config::OWNER_ID);
         let server_invite_url = env::var("SERVER_INVITE_URL")
             .map_err(|_| "SERVER_INVITE_URL is required".to_string())?;
 

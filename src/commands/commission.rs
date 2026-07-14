@@ -177,10 +177,7 @@ pub async fn handle_commission_create(
     }
 
     // Get owner ID for permissions
-    let owner_id = env::var("DISCORD_OWNER_ID")
-        .unwrap_or_else(|_| "1400464001133056111".to_string())
-        .parse::<u64>()
-        .unwrap_or(1400464001133056111);
+    let owner_id = crate::config::OWNER_ID;
 
     // Create private commission channel
     let channel_name = format!("commission-{}-{}", user.name.to_lowercase(), user.id);
