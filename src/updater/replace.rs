@@ -1,7 +1,7 @@
 //! Atomic file replacement with backup
 
-use std::path::Path;
 use std::fs;
+use std::path::Path;
 
 use super::UpdaterError;
 
@@ -16,7 +16,9 @@ pub fn atomic_replace(new_binary: &Path, current_binary: &Path) -> Result<(), Up
 
     // Verify new binary exists
     if !new_binary.exists() {
-        return Err(UpdaterError::FileIo("New binary does not exist".to_string()));
+        return Err(UpdaterError::FileIo(
+            "New binary does not exist".to_string(),
+        ));
     }
 
     // Note: Cross-filesystem check omitted; rename will fail if on different filesystems
@@ -33,7 +35,10 @@ pub fn atomic_replace(new_binary: &Path, current_binary: &Path) -> Result<(), Up
         if backup_path.exists() {
             let _ = fs::rename(&backup_path, current_binary);
         }
-        return Err(UpdaterError::FileIo(format!("Failed to replace binary: {}", e)));
+        return Err(UpdaterError::FileIo(format!(
+            "Failed to replace binary: {}",
+            e
+        )));
     }
 
     // Make executable (Unix)

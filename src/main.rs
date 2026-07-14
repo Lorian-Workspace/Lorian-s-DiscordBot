@@ -281,6 +281,12 @@ impl Handler {
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{}", self.lang.format_bot_connected(&ready.user.name));
+
+        // Clear pending update state after successful Discord connection
+        if let Err(e) = updater::clear_state() {
+            eprintln!("Warning: Failed to clear update state: {}", e);
+        }
+
         self.safety
             .ready(
                 &ctx,
@@ -972,6 +978,24 @@ async fn check_and_send_reminders(handler: &Handler, http: &Arc<serenity::http::
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().ok();
+    // Handle --version and --self-check before any initialization
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 {
+        match args[1].as_str() {
+            "--version" | "-V" => {
+                println!("v{}", env!("CARGO_PKG_VERSION"));
+                return;
+            }
+            "--self-check" => {
+                println!("v{}", env!("CARGO_PKG_VERSION"));
+                return;
+            }
+            _ => {}
+        }
+    }
+
+    // Check for pending update state on startup
+    updater::check_pending_on_startup();
     
     let handler = match Handler::new() {
         Ok(h) => h,
@@ -1069,6 +1093,49 @@ async fn main() {
         }
     }
         
+    // Start auto-update task (release builds only)
+    #[cfg(not(debug_assertions))]
+    {
+        let auto_update_enabled = std::env::var("AUTO_UPDATE_ENABLED")
+            .map(|v| v != "false")
+            .unwrap_or(true);
+
+        if auto_update_enabled {
+            tokio::spawn(async {
+                // Initial delay: 5 minutes after startup
+                tokio::time::sleep(Duration::from_secs(300)).await;
+
+                loop {
+                    // Check if auto-update is still enabled
+                    if std::env::var("AUTO_UPDATE_ENABLED").as_deref() == Ok("false") {
+                        eprintln!("Auto-update disabled via AUTO_UPDATE_ENABLED=false");
+                        break;
+                    }
+
+                    // Check for update
+                    match updater::check_for_update().await {
+                        Ok(Some(update)) => {
+                            eprintln!("Auto-update available: v{}", update.version);
+                            if let Err(e) = updater::apply_update(&update).await {
+                                eprintln!("Auto-update failed: {}", e);
+                            }
+                            // exec happens on success, this line never reached
+                        }
+                        Ok(None) => {
+                            // Already up to date, no log needed
+                        }
+                        Err(e) => {
+                            eprintln!("Auto-update check failed: {}", e);
+                        }
+                    }
+
+                    // Sleep 6 hours
+                    tokio::time::sleep(Duration::from_secs(6 * 3600)).await;
+                }
+            });
+        }
+    }
+
     if let Err(why) = client.start().await {
         println!("Error starting bot: {:?}", why);
     }

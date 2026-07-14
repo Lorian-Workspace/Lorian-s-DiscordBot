@@ -1,10 +1,10 @@
 //! GitHub API client for fetching releases
 
-use serde::Deserialize;
 use reqwest::Client;
+use serde::Deserialize;
 use std::time::Duration;
 
-use super::{UpdaterError, config};
+use super::{config, UpdaterError};
 
 /// GitHub release information
 #[derive(Debug, Clone, Deserialize)]
@@ -34,7 +34,10 @@ pub async fn fetch_latest_release() -> Result<Release, UpdaterError> {
         .build()
         .map_err(|e| UpdaterError::Network(e.to_string()))?;
 
-    let url = format!("https://api.github.com/repos/{}/releases/latest", config::GITHUB_REPO);
+    let url = format!(
+        "https://api.github.com/repos/{}/releases/latest",
+        config::GITHUB_REPO
+    );
 
     let response = client
         .get(&url)
@@ -43,7 +46,13 @@ pub async fn fetch_latest_release() -> Result<Release, UpdaterError> {
         .map_err(|e| UpdaterError::Network(e.to_string()))?;
 
     if !response.status().is_success() {
-        return Err(UpdaterError::GitHubApi(format!("HTTP {}", response.status())));
+        if response.status().as_u16() == 404 {
+            return Err(UpdaterError::NoReleaseAvailable);
+        }
+        return Err(UpdaterError::GitHubApi(format!(
+            "HTTP {}",
+            response.status()
+        )));
     }
 
     let release: Release = response
@@ -59,7 +68,10 @@ pub async fn fetch_latest_release() -> Result<Release, UpdaterError> {
     // Verify assets exist
     let expected_asset = format!("{}-{}", config::ASSET_BASE_NAME, config::TARGET_TRIPLE);
     let has_asset = release.assets.iter().any(|a| a.name == expected_asset);
-    let has_checksum = release.assets.iter().any(|a| a.name == format!("{}.sha256", expected_asset));
+    let has_checksum = release
+        .assets
+        .iter()
+        .any(|a| a.name == format!("{}.sha256", expected_asset));
 
     if !has_asset || !has_checksum {
         return Err(UpdaterError::NoReleaseAvailable);

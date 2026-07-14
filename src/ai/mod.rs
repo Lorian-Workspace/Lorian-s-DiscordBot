@@ -109,7 +109,7 @@ impl OwnerInfo {
             email: owner_file.owner.email,
             skills: owner_file.owner.skills,
             bio: owner_file.owner.bio,
-            discord_id: owner_file.owner.discord_id,
+            discord_id: crate::config::OWNER_ID.to_string(),
             personality: owner_file.context.as_ref().and_then(|c| c.personality.clone()),
             communication_style: owner_file.context.as_ref().and_then(|c| c.communication_style.clone()),
             specialties_focus: owner_file.context.as_ref().and_then(|c| c.specialties_focus.clone()),

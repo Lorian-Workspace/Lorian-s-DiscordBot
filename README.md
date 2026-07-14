@@ -204,6 +204,24 @@ Este bot está optimizado para:
 ## 📝 Licencia
 
 Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
+## 🔄 Auto-Update
+
+El bot incluye un sistema de auto-actualización para Linux x86_64:
+
+- **Activación**: Habilitado por defecto en builds de release
+- **Intervalo**: Verifica cada 6 horas
+- **Kill switch**: `AUTO_UPDATE_ENABLED=false`
+- **Manual**: `/update` (solo owner)
+- **Trust root**: GitHub releases + SHA256 checksum (no publisher signature)
+- **Requisitos**: Directorio ejecutable con permisos de escritura
+
+**Nota importante**:
+- La primera actualización debe ser manual (bootstrap)
+- No hay rollback automático después de crash
+- Si el nuevo binario falla, restaurar manualmente desde `.bak`
+- El estado pending se limpia después de Discord ready
+- Proteger tags `v*` con ruleset antes del primer release
+
 
 ## 🤝 Contribuciones
 

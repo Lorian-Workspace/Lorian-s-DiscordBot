@@ -1,8 +1,9 @@
 //! Download and verify binary with checksum
 
 use reqwest::Client;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::io::Write;
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::time::Duration;
 
@@ -10,6 +11,17 @@ use super::UpdaterError;
 
 /// Maximum download size (100 MB)
 const MAX_SIZE: u64 = 100 * 1024 * 1024;
+
+/// Maximum checksum file size (1 KiB)
+const MAX_CHECKSUM_SIZE: u64 = 1024;
+
+/// Allowed redirect hosts
+const ALLOWED_HOSTS: &[&str] = &[
+    "github.com",
+    "api.github.com",
+    "objects.githubusercontent.com",
+    "release-assets.githubusercontent.com",
+];
 
 /// Download binary and verify checksum
 pub async fn download_and_verify(
@@ -25,6 +37,7 @@ pub async fn download_and_verify(
         .user_agent(format!("lorian-discord-bot/{}", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(10))
         .timeout(Duration::from_secs(300))
+        .redirect(reqwest::redirect::Policy::limited(5))
         .build()
         .map_err(|e| UpdaterError::Network(e.to_string()))?;
 
@@ -49,22 +62,31 @@ pub async fn download_and_verify(
 
 /// Validate URL is from GitHub releases
 fn validate_url(url: &str) -> Result<(), UpdaterError> {
-    let parsed = url::Url::parse(url).map_err(|e| UpdaterError::Network(e.to_string()))?;
-
     // Must be HTTPS
-    if parsed.scheme() != "https" {
+    if !url.starts_with("https://") {
         return Err(UpdaterError::Network("URL must be HTTPS".to_string()));
     }
 
-    // Must be from GitHub
-    if parsed.host_str() != Some("github.com") && parsed.host_str() != Some("api.github.com") {
-        return Err(UpdaterError::Network("URL must be from github.com".to_string()));
+    // Must be from GitHub or allowed CDN
+    let mut is_allowed = false;
+    for host in ALLOWED_HOSTS {
+        if url.contains(&format!("{}/", host)) {
+            is_allowed = true;
+            break;
+        }
+    }
+
+    if !is_allowed {
+        return Err(UpdaterError::Network(
+            "URL must be from github.com or allowed CDN".to_string(),
+        ));
     }
 
     // Must be from the correct repo
-    let path = parsed.path();
-    if !path.contains(&format!("/{}/", crate::config::GITHUB_REPO)) {
-        return Err(UpdaterError::Network("URL must be from correct repository".to_string()));
+    if !url.contains(&format!("/{}/", crate::config::GITHUB_REPO)) {
+        return Err(UpdaterError::Network(
+            "URL must be from correct repository".to_string(),
+        ));
     }
 
     Ok(())
@@ -78,12 +100,19 @@ async fn download_checksum(client: &Client, url: &str) -> Result<String, Updater
         .await
         .map_err(|e| UpdaterError::Network(e.to_string()))?;
 
+    // Validate final URL host
+    let final_url = response.url().as_str();
+    validate_final_url(final_url)?;
+
     if !response.status().is_success() {
+        if response.status().as_u16() == 404 {
+            return Err(UpdaterError::NoReleaseAvailable);
+        }
         return Err(UpdaterError::Network(format!("HTTP {}", response.status())));
     }
 
     let content_length = response.content_length().unwrap_or(0);
-    if content_length > 1024 {
+    if content_length > MAX_CHECKSUM_SIZE {
         return Err(UpdaterError::Network("Checksum file too large".to_string()));
     }
 
@@ -101,7 +130,9 @@ async fn download_checksum(client: &Client, url: &str) -> Result<String, Updater
 
     // Validate checksum format (64 hex chars for SHA256)
     if checksum.len() != 64 || !checksum.chars().all(|c| c.is_ascii_hexdigit()) {
-        return Err(UpdaterError::InvalidResponse("Invalid checksum format".to_string()));
+        return Err(UpdaterError::InvalidResponse(
+            "Invalid checksum format".to_string(),
+        ));
     }
 
     Ok(checksum)
@@ -119,7 +150,14 @@ async fn download_binary(
         .await
         .map_err(|e| UpdaterError::Network(e.to_string()))?;
 
+    // Validate final URL host
+    let final_url = response.url().as_str();
+    validate_final_url(final_url)?;
+
     if !response.status().is_success() {
+        if response.status().as_u16() == 404 {
+            return Err(UpdaterError::NoReleaseAvailable);
+        }
         return Err(UpdaterError::Network(format!("HTTP {}", response.status())));
     }
 
@@ -130,32 +168,35 @@ async fn download_binary(
         }
     }
 
-    // Download with streaming to compute checksum
-    let mut hasher = Sha256::new();
-    let mut file = std::fs::File::create(output_path)
+    // Create file with create_new and 0600 permissions
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(output_path)
         .map_err(|e| UpdaterError::FileIo(e.to_string()))?;
 
     let mut downloaded: u64 = 0;
-    let mut stream = response.bytes_stream();
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| UpdaterError::Network(e.to_string()))?;
 
-    use futures_util::StreamExt;
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| UpdaterError::Network(e.to_string()))?;
-        downloaded += chunk.len() as u64;
-
-        if downloaded > MAX_SIZE {
-            drop(file);
-            let _ = std::fs::remove_file(output_path);
-            return Err(UpdaterError::Network("Binary too large".to_string()));
-        }
-
-        hasher.update(&chunk);
-        file.write_all(&chunk)
-            .map_err(|e| UpdaterError::FileIo(e.to_string()))?;
+    downloaded += bytes.len() as u64;
+    if downloaded > MAX_SIZE {
+        drop(file);
+        let _ = std::fs::remove_file(output_path);
+        return Err(UpdaterError::Network("Binary too large".to_string()));
     }
 
+    let mut hasher = Sha256::new();
+    hasher.update(&bytes);
+    file.write_all(&bytes)
+        .map_err(|e| UpdaterError::FileIo(e.to_string()))?;
+
     // Sync to disk
-    file.sync_all().map_err(|e| UpdaterError::FileIo(e.to_string()))?;
+    file.sync_all()
+        .map_err(|e| UpdaterError::FileIo(e.to_string()))?;
     drop(file);
 
     // Also sync parent directory
@@ -166,5 +207,32 @@ async fn download_binary(
     }
 
     let hash = hasher.finalize();
-    Ok(hex::encode(hash))
+    Ok(format!("{:x}", hash))
+}
+
+/// Validate final URL after redirects
+fn validate_final_url(url: &str) -> Result<(), UpdaterError> {
+    // Must be HTTPS
+    if !url.starts_with("https://") {
+        return Err(UpdaterError::Network(
+            "Final URL must be HTTPS".to_string(),
+        ));
+    }
+
+    // Must be from allowed hosts
+    let mut is_allowed = false;
+    for host in ALLOWED_HOSTS {
+        if url.contains(&format!("{}/", host)) {
+            is_allowed = true;
+            break;
+        }
+    }
+
+    if !is_allowed {
+        return Err(UpdaterError::Network(
+            "Final URL must be from allowed hosts".to_string(),
+        ));
+    }
+
+    Ok(())
 }

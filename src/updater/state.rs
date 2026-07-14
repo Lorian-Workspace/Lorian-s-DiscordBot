@@ -1,9 +1,9 @@
 //! Update state persistence
 
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use chrono::{DateTime, Utc};
 use semver::Version;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 /// State of an in-progress update
 #[derive(Debug, Clone, Serialize, Deserialize)]

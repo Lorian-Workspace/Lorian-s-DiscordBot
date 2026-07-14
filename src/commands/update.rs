@@ -25,21 +25,9 @@ pub async fn handle_update_command(
     }
 
     // Immediate ephemeral ACK
-    let defer_response = CreateInteractionResponse::Defer(
-        CreateInteractionResponseMessage::new().ephemeral(true),
-    );
+    let defer_response =
+        CreateInteractionResponse::Defer(CreateInteractionResponseMessage::new().ephemeral(true));
     command.create_response(&ctx.http, defer_response).await?;
-
-    // Try to acquire lock (non-blocking)
-    let _lock = match updater::try_acquire_lock() {
-        Some(lock) => lock,
-        None => {
-            command
-                .edit_response(&ctx.http, EditInteractionResponse::new().content("⏳ Update already in progress."))
-                .await?;
-            return Ok(());
-        }
-    };
 
     // Check for update
     let update = match updater::check_for_update().await {
@@ -76,13 +64,13 @@ pub async fn handle_update_command(
         }
     };
 
-    // Apply update
+    // Apply update (lock is acquired internally)
     // Edit message before apply_update since exec will replace the process
     command
         .edit_response(
             &ctx.http,
             EditInteractionResponse::new().content(format!(
-                "✅ Verified v{} — applying update and restarting...",
+                "✅ Found v{} — downloading and verifying; will restart only if valid",
                 update.version
             )),
         )
@@ -99,6 +87,14 @@ pub async fn handle_update_command(
                         "✅ Updated to v{} — restart pending",
                         update.version
                     )),
+                )
+                .await?;
+        }
+        Err(updater::UpdaterError::LockBusy) => {
+            command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new().content("⏳ Update already in progress."),
                 )
                 .await?;
         }
