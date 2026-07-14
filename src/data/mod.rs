@@ -10,6 +10,98 @@ pub use persistence::DataManager;
 pub use message_data::ButtonMessageData;
 pub use conversation_data::{ConversationContext, AIMessage, MessageRole};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerificationPending {
+    #[serde(default)]
+    pub guild_id: u64,
+    #[serde(default)]
+    pub user_id: u64,
+    #[serde(default)]
+    pub created_at: DateTime<Utc>,
+    #[serde(default)]
+    pub last_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnnouncementSubscription {
+    #[serde(default)]
+    pub guild_id: u64,
+    #[serde(default)]
+    pub user_id: u64,
+    #[serde(default)]
+    pub active: bool,
+    #[serde(default)]
+    pub updated_at: DateTime<Utc>,
+    #[serde(default)]
+    pub terms_version: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnnouncementDelivery {
+    #[serde(default)]
+    pub guild_id: u64,
+    #[serde(default)]
+    pub source_message_id: u64,
+    #[serde(default)]
+    pub recipient_user_ids: Vec<u64>,
+    #[serde(default)]
+    pub delivered_user_ids: Vec<u64>,
+    #[serde(default)]
+    pub permanent_failure_user_ids: Vec<u64>,
+    #[serde(default)]
+    pub skipped_user_ids: Vec<u64>,
+    #[serde(default)]
+    pub started_at: DateTime<Utc>,
+    #[serde(default)]
+    pub completed_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HoneypotRecovery {
+    #[serde(default)]
+    pub guild_id: u64,
+    #[serde(default)]
+    pub user_id: u64,
+    #[serde(default)]
+    pub source_message_id: u64,
+    #[serde(default)]
+    pub started_at: DateTime<Utc>,
+    #[serde(default)]
+    pub stage: HoneypotStage,
+    #[serde(default)]
+    pub completed_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum HoneypotStage {
+    #[default]
+    Received,
+    NoticeAttempted,
+    BanPending,
+    UnbanPending,
+    BanFailed,
+    Completed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SafetyData {
+    #[serde(default)]
+    pub verification_started_at: HashMap<String, DateTime<Utc>>,
+    #[serde(default)]
+    pub verification_message_ids: HashMap<String, u64>,
+    #[serde(default)]
+    pub honeypot_message_ids: HashMap<String, u64>,
+    #[serde(default)]
+    pub verification_pending: HashMap<String, VerificationPending>,
+    #[serde(default)]
+    pub announcement_subscriptions: HashMap<String, AnnouncementSubscription>,
+    #[serde(default)]
+    pub announcement_deliveries: HashMap<String, AnnouncementDelivery>,
+    #[serde(default)]
+    pub honeypot_recoveries: HashMap<String, HoneypotRecovery>,
+}
+
 /// Reminder data structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Reminder {
@@ -51,6 +143,9 @@ pub struct BotData {
     pub reminders: HashMap<String, Reminder>,
     /// Feedback messages
     pub feedback_messages: HashMap<String, FeedbackMessage>,
+    /// Verification, opt-in announcement, and honeypot recovery state.
+    #[serde(default)]
+    pub safety: SafetyData,
     /// Last update timestamp
     pub last_updated: DateTime<Utc>,
 }
@@ -62,6 +157,7 @@ impl BotData {
             conversations: HashMap::new(),
             reminders: HashMap::new(),
             feedback_messages: HashMap::new(),
+            safety: SafetyData::default(),
             last_updated: Utc::now(),
         }
     }

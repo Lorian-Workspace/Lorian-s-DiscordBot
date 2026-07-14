@@ -13,6 +13,7 @@ pub struct Messages {
     pub commission: CommissionSystem,
     pub ticket: TicketSystem,
     pub feedback: FeedbackSystem,
+    pub safety: SafetySystem,
 }
 
 #[derive(Debug, Deserialize)]
@@ -428,6 +429,58 @@ pub struct FeedbackMessages {
     pub no_votes_yet: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct SafetySystem {
+    pub verification: SafetyVerification,
+    pub responses: SafetyResponses,
+    pub announcement: SafetyAnnouncement,
+    pub honeypot: SafetyHoneypot,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SafetyVerification {
+    pub title: String,
+    pub description: String,
+    pub footer: String,
+    pub verify_button: String,
+    pub not_now_button: String,
+    pub subscribe_button: String,
+    pub unsubscribe_button: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SafetyResponses {
+    pub verified: String,
+    pub already_verified: String,
+    pub not_now: String,
+    pub subscribed: String,
+    pub unsubscribed: String,
+    pub invalid_interaction: String,
+    pub role_update_failed: String,
+    pub subscription_failed: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SafetyAnnouncement {
+    pub title: String,
+    pub source_label: String,
+    pub footer: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SafetyHoneypot {
+    pub title: String,
+    pub intro: String,
+    pub english: String,
+    pub spanish: String,
+    pub portuguese_brazil: String,
+    pub russian: String,
+    pub chinese_simplified: String,
+    pub french: String,
+    pub footer: String,
+    pub security_dm: String,
+}
+
 pub struct LanguageManager {
     messages: Messages,
 }
@@ -441,6 +494,8 @@ pub struct BotImages {
     pub thinking: HashMap<String, String>,
     pub showing: HashMap<String, String>,
     pub misc: HashMap<String, String>,
+    #[serde(default)]
+    pub safety: HashMap<String, String>,
     pub defaults: HashMap<String, String>,
 }
 
@@ -480,6 +535,7 @@ impl ImageManager {
             "thinking" => self.images.thinking.get(name),
             "showing" => self.images.showing.get(name),
             "misc" => self.images.misc.get(name),
+            "safety" => self.images.safety.get(name),
             _ => None,
         }
     }
@@ -510,7 +566,7 @@ impl ImageManager {
     }
     
     pub fn list_categories(&self) -> Vec<&str> {
-        vec!["avatar", "emotions", "reactions", "talking", "thinking", "showing", "misc"]
+        vec!["avatar", "emotions", "reactions", "talking", "thinking", "showing", "misc", "safety"]
     }
     
     pub fn list_images_in_category(&self, category: &str) -> Vec<&String> {
@@ -522,6 +578,7 @@ impl ImageManager {
             "thinking" => self.images.thinking.keys().collect(),
             "showing" => self.images.showing.keys().collect(),
             "misc" => self.images.misc.keys().collect(),
+            "safety" => self.images.safety.keys().collect(),
             _ => vec![],
         }
     }
