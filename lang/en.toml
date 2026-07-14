@@ -375,3 +375,39 @@ setup_success = "Feedback system has been successfully set up in"
 setup_success_footer = "Feedback system is now active"
 content_filtered = "your message was removed due to inappropriate content."
 no_votes_yet = "No votes yet"
+
+[safety.verification]
+title = "Server verification and optional announcements"
+description = "Members who joined after verification was enabled must verify to receive the server's Verified role. Verification changes server roles only. Announcement DMs are a separate, optional bot subscription: Subscribe lets this bot attempt future announcement DMs, while your Discord privacy settings may still block delivery. Unsubscribing never affects verification or membership."
+footer = "Safety panel v1 • Role verification and DM subscription are separate"
+verify_button = "Verify"
+not_now_button = "Not now"
+subscribe_button = "Subscribe to announcement DMs"
+unsubscribe_button = "Unsubscribe from announcement DMs"
+
+[safety.responses]
+verified = "Verification complete. The Verified role is active and the Unverified role was removed."
+already_verified = "You are already verified."
+not_now = "No change was made. You remain Unverified and can verify later from this panel."
+subscribed = "Subscribed. The bot recorded your optional request for future announcement DMs. Selection also requires eligible server-role state, and Discord privacy settings may still block delivery."
+unsubscribed = "Unsubscribed. The bot will no longer select you for announcement DMs. Verification and membership are unchanged."
+invalid_interaction = "This safety-panel interaction is invalid or does not belong to this server/member."
+role_update_failed = "Verification could not be completed safely. Contact a server administrator to inspect your roles before relying on access."
+subscription_failed = "The announcement-DM preference could not be saved. Please try again later."
+
+[safety.announcement]
+title = "Server announcement"
+source_label = "Original announcement"
+footer = "Sent because you opted in through the server safety panel"
+
+[safety.honeypot]
+title = "Security barrier • Do not post"
+intro = "Posting any human message in this channel is an explicit action that triggers one security DM containing the stable server invite, followed by a temporary moderation ban that deletes the preceding 48 hours of that user's messages and an immediate unban attempt."
+english = "Do not post here. A human message triggers the disclosed DM and moderation sequence."
+spanish = "No publiques aquí. Un mensaje humano activa el DM y la secuencia de moderación descritos."
+portuguese_brazil = "Não publique aqui. Uma mensagem humana aciona a DM e a sequência de moderação informadas."
+russian = "Не пишите здесь. Сообщение человека запускает описанные личное уведомление и модерацию."
+chinese_simplified = "请勿在此发言。真人消息会触发上述私信通知和管理流程。"
+french = "Ne publiez rien ici. Un message humain déclenche le MP et la séquence de modération annoncés."
+footer = "safety-honeypot-v1"
+security_dm = "Your message in the disclosed security-barrier channel triggered its stated action. The bot will temporarily ban you to delete the preceding 48 hours of your messages, then immediately attempt to unban you. Stable server invite: {invite}"

@@ -1,1 +1,1 @@
-// Módulo de eventos 
+pub mod safety;

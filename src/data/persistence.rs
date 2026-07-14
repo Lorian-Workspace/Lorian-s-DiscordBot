@@ -13,6 +13,8 @@ use chrono::Utc;
 pub struct DataManager {
     /// Path to the data directory
     data_dir: PathBuf,
+    /// Path to the configured data file.
+    data_file: PathBuf,
     /// In-memory cache of bot data
     data: Arc<Mutex<BotData>>,
     /// Whether auto-save is enabled
@@ -67,6 +69,7 @@ impl DataManager {
 
         Ok(Self {
             data_dir,
+            data_file,
             data: Arc::new(Mutex::new(data)),
             auto_save: config.auto_save,
         })
@@ -81,20 +84,32 @@ impl DataManager {
 
     /// Save data to file
     pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let data = self.data.lock().unwrap();
-        let file_path = self.data_dir.join("bot_data.json");
+        let json = {
+            let data = self.data.lock().map_err(|_| "bot data lock poisoned")?;
+            serde_json::to_string_pretty(&*data)?
+        };
+        let file_path = &self.data_file;
+        let file_name = file_path
+            .file_name()
+            .ok_or("configured data path has no filename")?
+            .to_string_lossy();
+        let temporary_path = file_path.with_file_name(format!("{file_name}.tmp"));
         
         // Create a backup of the current file
         if file_path.exists() {
-            let backup_path = self.data_dir.join("bot_data.json.backup");
-            fs::copy(&file_path, backup_path)?;
+            let backup_path = file_path.with_file_name(format!("{file_name}.backup"));
+            fs::copy(file_path, backup_path)?;
         }
         
-        // Write new data
-        let json = serde_json::to_string_pretty(&*data)?;
-        let mut file = fs::File::create(&file_path)?;
+        // Write and sync a same-directory temporary file before atomic replacement.
+        let mut file = fs::File::create(&temporary_path)?;
         file.write_all(json.as_bytes())?;
         file.sync_all()?;
+        fs::rename(&temporary_path, file_path)?;
+
+        if let Ok(directory) = fs::File::open(&self.data_dir) {
+            directory.sync_all()?;
+        }
         
         println!("Data saved to {}", file_path.display());
         Ok(())

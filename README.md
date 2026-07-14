@@ -37,7 +37,12 @@ Un bot de Discord de alto rendimiento desarrollado en **Rust** usando el framewo
    ```bash
    # Crear archivo .env
    echo "DISCORD_TOKEN=tu_token_aqui" > .env
-   echo "OWNER_ID=1400464001133056111" >> .env
+   echo "DISCORD_OWNER_ID=tu_id_de_owner" >> .env
+   echo "SERVER_INVITE_URL=https://discord.gg/tu_codigo_estable" >> .env
+   echo "VERIFICATION_CHANNEL_ID=tu_canal_de_verificacion" >> .env
+   echo "UNVERIFIED_ROLE_ID=tu_rol_no_verificado" >> .env
+   echo "VERIFIED_ROLE_ID=tu_rol_verificado" >> .env
+   echo "SUBSCRIBER_ROLE_ID=tu_rol_suscriptor_de_anuncios" >> .env
    echo "RUST_LOG=info" >> .env
    ```
 
@@ -89,9 +94,33 @@ src/
 
 | Variable         | Descripción                        | Por defecto |
 |------------------|------------------------------------|-------------|
-| `DISCORD_TOKEN`  | Token del bot de Discord           | Requerido   |
-| `OWNER_ID`       | ID del owner del Discord           | Requerido   |
-| `RUST_LOG`       | Nivel de logging                   | `info`      |
+| `DISCORD_TOKEN` | Token del bot de Discord | Requerido |
+| `DISCORD_OWNER_ID` | Único usuario humano autorizado para publicar anuncios por DM | Requerido |
+| `SERVER_INVITE_URL` | Invitación estable existente (`https://discord.gg/...` o `https://discord.com/invite/...`) | Requerido |
+| `VERIFICATION_CHANNEL_ID` | Canal del panel canónico de verificación/suscripción | Requerido |
+| `UNVERIFIED_ROLE_ID` | Rol aplicado a miembros que entren después del cutoff | Requerido |
+| `VERIFIED_ROLE_ID` | Rol aplicado al verificar | Requerido |
+| `SUBSCRIBER_ROLE_ID` | Rol separado para la suscripción opcional a DMs de anuncios | Requerido |
+| `RUST_LOG` | Nivel de logging | `info` |
+
+Los seis IDs/URL de seguridad son fail-closed: si faltan o son inválidos, el bot no inicia; si Discord no permite validar canales, roles, jerarquía o permisos durante `ready`, toda la función de seguridad queda desactivada. Los canales fijos son:
+
+- Anuncios: `1400467682440118333`.
+- Barrera/honeypot: `1526610057511567380`.
+
+`SERVER_INVITE_URL` debe apuntar a una invitación estable ya administrada. El bot no crea invitaciones durante incidentes.
+
+### Verificación y suscripción opcional
+
+En la primera activación válida, el bot persiste `verification_started_at`. Miembros con `joined_at` anterior quedan grandfathered: no reciben roles ni DMs automáticamente. Miembros posteriores reciben `UNVERIFIED_ROLE_ID`, sin DM. El panel canónico contiene:
+
+- **Verify**: añade `VERIFIED_ROLE_ID` antes de quitar `UNVERIFIED_ROLE_ID`; ante un fallo, el flujo se cierra sin kick y responde de forma explícita.
+- **Not now**: no cambia roles, no expulsa y no afecta la membresía.
+- **Subscribe/Unsubscribe**: preferencia opcional, separada de la verificación. Una entrega requiere simultáneamente ledger activo, `SUBSCRIBER_ROLE_ID`, membresía humana actual y `VERIFIED_ROLE_ID` o grandfathering. Unsubscribe suprime primero el ledger, por lo que un fallo al quitar el rol no vuelve al usuario elegible.
+
+Los roles de Discord son la fuente durable de verdad para verificación. El JSON sólo guarda cutoff, mensajes canónicos, preferencias, dedupe y recuperación necesaria. Reinicios reconcilian entradas posteriores al cutoff que llegaron mientras el bot estaba offline y eliminan registros de usuarios que ya salieron.
+
+Configura manualmente los overwrites de `UNVERIFIED_ROLE_ID`: permitir ver/usar `VERIFICATION_CHANNEL_ID` y negar los canales protegidos que correspondan. El bot valida y avisa, pero nunca reescribe permisos de todo el servidor.
 
 ### Permisos del bot
 
@@ -100,6 +129,37 @@ Asegúrate de que tu bot tenga los siguientes permisos:
 - Use Slash Commands
 - Read Message History
 - Embed Links
+- Manage Roles
+- Ban Members
+- Manage Messages
+
+La jerarquía debe ser: rol más alto del bot por encima de `UNVERIFIED_ROLE_ID`, `VERIFIED_ROLE_ID` y `SUBSCRIBER_ROLE_ID`. Los tres roles deben ser distintos y no administrados por integraciones.
+
+Activa estos Gateway Intents:
+
+- `GUILDS`
+- `GUILD_MEMBERS` (privileged; joins y recuperación posterior al cutoff)
+- `GUILD_MODERATION` (recuperación ban/unban)
+- `GUILD_MESSAGES`
+- `GUILD_MESSAGE_REACTIONS`
+- `MESSAGE_CONTENT` (privileged; usado por el contenido del anuncio autorizado; no se enumeran miembros para anunciar)
+
+### Anuncios y barrera de seguridad
+
+Sólo un mensaje humano, no-webhook, de `DISCORD_OWNER_ID` en `1400467682440118333` inicia un anuncio. El bot toma una instantánea de suscriptores elegibles, revalida ledger/rol/membresía antes de cada DM, excluye bots y autor, desactiva menciones, envía secuencialmente y persiste dedupe por mensaje fuente. Serenity gestiona rate limits; no hay sleeps fijos.
+
+El canal `1526610057511567380` mantiene exactamente un aviso canónico en seis idiomas. Ese aviso declara que publicar allí provoca un DM de seguridad con la invitación estable, un ban temporal con `delete_message_seconds=172800` y un unban inmediato. Fallo de ban no intenta unban; fallo de unban queda marcado como CRITICAL y se recupera en `ready`. La imagen semántica `safety.barrier` está en `bot_images.toml`; URL ausente/inválida omite la imagen sin detener el aviso.
+
+### Checklist de staging (sin afirmar pruebas live)
+
+1. Crear los tres roles distintos y colocar el rol del bot por encima de ellos.
+2. Configurar overwrites de Unverified sólo en los canales deseados; no bloquear el panel de verificación.
+3. Dar permisos/intents anteriores y comprobar que `MESSAGE_CONTENT` está habilitado en Developer Portal.
+4. Configurar las siete variables requeridas y arrancar en un guild de staging.
+5. Verificar que queda un solo panel en `VERIFICATION_CHANNEL_ID` y un solo aviso en el honeypot tras dos reconexiones.
+6. Probar miembro anterior al cutoff (sin cambio) y posterior (Unverified), Verify, Not now, Subscribe y Unsubscribe.
+7. Probar anuncio con owner/no-owner/webhook; confirmar sólo la intersección elegible y ningún ping.
+8. Probar barrera con una cuenta desechable; revisar audit log, borrado de 48 horas, unban y recuperación tras reinicio simulado.
 
 ## 🔧 Desarrollo
 

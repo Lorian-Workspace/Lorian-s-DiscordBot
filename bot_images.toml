@@ -48,6 +48,9 @@ showing_finish = "https://media.discordapp.net/attachments/1401526269967077428/1
 # Miscellaneous images
 sunglass = "https://cdn.discordapp.com/attachments/1401526269967077428/1401526420496322560/sunglass.png?ex=689098b1&is=688f4731&hm=d1b55c2ad488f67ca9dede8ef53e5dc2d0e72c7bce18b7d531137b7701bcc116&"
 
+[safety]
+barrier = "https://i.ytimg.com/vi/1Gy2n5YmP3I/maxresdefault.jpg"
+
 # Default images for common use cases
 [defaults]
 # Commonly used images for different scenarios

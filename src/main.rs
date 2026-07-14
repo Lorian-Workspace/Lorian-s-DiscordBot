@@ -17,10 +17,12 @@ mod lang;
 mod data;
 mod ai;
 mod commands;
+mod events;
 
 use lang::{LanguageManager, ImageManager, EmojiManager};
 use data::{DataManager, AIMessage, MessageRole};
 use ai::{AIManager, AIConfig};
+use events::safety::SafetyService;
 
 // Wrapper para Arc<Handler> que implementa EventHandler
 struct HandlerWrapper(Arc<Handler>);
@@ -33,6 +35,10 @@ impl EventHandler for HandlerWrapper {
     
     async fn message(&self, ctx: Context, msg: Message) {
         self.0.message(ctx, msg).await;
+    }
+
+    async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
+        self.0.guild_member_addition(ctx, new_member).await;
     }
     
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
@@ -54,6 +60,7 @@ struct Handler {
     emojis: EmojiManager,
     data_manager: DataManager,
     ai_manager: AIManager,
+    safety: SafetyService,
     start_time: Instant,
 }
 
@@ -63,6 +70,7 @@ impl Handler {
         let images = ImageManager::new()?;
         let emojis = EmojiManager::new()?;
         let data_manager = DataManager::new()?;
+        let safety = SafetyService::new()?;
         
         // Migrate data if needed
         data_manager.migrate_data_if_needed()?;
@@ -75,6 +83,7 @@ impl Handler {
             emojis,
             data_manager,
             ai_manager,
+            safety,
             start_time: Instant::now(),
         })
     }
@@ -270,6 +279,15 @@ impl Handler {
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{}", self.lang.format_bot_connected(&ready.user.name));
+        self.safety
+            .ready(
+                &ctx,
+                ready.user.id,
+                &self.data_manager,
+                &self.lang,
+                &self.images,
+            )
+            .await;
         
         let lang_msgs = self.lang.get();
         let commands = vec![
@@ -342,6 +360,20 @@ impl EventHandler for Handler {
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
+        if self
+            .safety
+            .handle_message(
+                &ctx,
+                &msg,
+                &self.data_manager,
+                &self.lang,
+                &self.images,
+            )
+            .await
+        {
+            return;
+        }
+
         // Ignore messages from bots
         if msg.author.bot {
             return;
@@ -666,6 +698,13 @@ impl EventHandler for Handler {
             }
             },
             Interaction::Component(component) => {
+                if self
+                    .safety
+                    .handle_component(&ctx, &component, &self.data_manager, &self.lang)
+                    .await
+                {
+                    return;
+                }
                 // Handle dropdown menu and button interactions
                 match component.data.custom_id.as_str() {
                     "help_select" => {
@@ -801,6 +840,12 @@ impl EventHandler for Handler {
             _ => {} // Other interaction types
         }
     }
+
+    async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
+        self.safety
+            .member_added(&ctx, &new_member, &self.data_manager)
+            .await;
+    }
 }
 
 
@@ -919,13 +964,18 @@ async fn main() {
     let handler = match Handler::new() {
         Ok(h) => h,
         Err(e) => {
-            eprintln!("Failed to initialize language system: {}", e);
+            eprintln!("Failed to initialize bot: {}", e);
             return;
         }
     };
     
     let token = env::var("DISCORD_TOKEN").expect("DISCORD_TOKEN not set");
-    let intents = GatewayIntents::GUILD_MESSAGES | GatewayIntents::MESSAGE_CONTENT | GatewayIntents::GUILDS | GatewayIntents::GUILD_MESSAGE_REACTIONS;
+    let intents = GatewayIntents::GUILD_MESSAGES
+        | GatewayIntents::MESSAGE_CONTENT
+        | GatewayIntents::GUILDS
+        | GatewayIntents::GUILD_MEMBERS
+        | GatewayIntents::GUILD_MODERATION
+        | GatewayIntents::GUILD_MESSAGE_REACTIONS;
     
     // Create Arc for sharing between client and background task
     let handler_arc = Arc::new(handler);
@@ -955,4 +1005,4 @@ async fn main() {
     if let Err(why) = client.start().await {
         println!("Error starting bot: {:?}", why);
     }
-} 
+}
