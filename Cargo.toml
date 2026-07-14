@@ -19,6 +19,13 @@ uuid = { version = "1.0", features = ["v4"] }
 semver = { version = "1.0", features = ["serde"] }
 sha2 = "0.10"
 
+# Direct libc dependency for O_NOFOLLOW on lock/state files.
+# Security: O_NOFOLLOW prevents symlink-following attacks where an attacker
+# places a symlink at the expected lock/state path pointing to a critical
+# file. Combined with post-open uid/mode/regular-file validation this
+# provides defense-in-depth against TOCTOU races on the file system.
+libc = "0.2"
+
 [dev-dependencies]
 tempfile = "3.10"
 

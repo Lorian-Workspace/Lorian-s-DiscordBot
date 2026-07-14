@@ -398,7 +398,7 @@ impl EventHandler for Handler {
         }
 
         // Check if this is a message in the AI channel (tickets excluded)
-        let should_process = self.ai_manager.should_process_message(&msg.channel_id.to_string(), &msg.author.id.to_string());
+        let should_process = self.ai_manager.should_process_message(&msg.channel_id.to_string(), msg.author.id.get());
             
         if should_process {
             if let Err(e) = self.handle_ai_message(&ctx, &msg).await {
@@ -994,8 +994,10 @@ async fn main() {
         }
     }
 
-    // Check for pending update state on startup
-    updater::check_pending_on_startup();
+    // Reconcile any pending update state from prior crash / exec failure
+    if let Err(e) = updater::reconcile_startup_state() {
+        eprintln!("WARNING: reconcile_startup_state: {}", e);
+    }
     
     let handler = match Handler::new() {
         Ok(h) => h,
@@ -1041,73 +1043,16 @@ async fn main() {
     // Start auto-update task (release builds only)
     #[cfg(not(debug_assertions))]
     {
-        let auto_update_enabled = std::env::var("AUTO_UPDATE_ENABLED")
-            .map(|v| v != "false")
-            .unwrap_or(true);
+        let auto_update = config::AutoUpdateConfig::from_env(std::env::var("AUTO_UPDATE_ENABLED"));
 
-        if auto_update_enabled {
+        if auto_update.enabled {
             tokio::spawn(async {
                 // Initial delay: 5 minutes after startup
                 tokio::time::sleep(Duration::from_secs(300)).await;
 
                 loop {
-                    // Check if auto-update is still enabled
-                    if std::env::var("AUTO_UPDATE_ENABLED").as_deref() == Ok("false") {
-                        eprintln!("Auto-update disabled via AUTO_UPDATE_ENABLED=false");
-                        break;
-                    }
-
-                    // Try to acquire lock (non-blocking)
-                    let lock = match updater::try_acquire_lock() {
-                        Some(lock) => lock,
-                        None => {
-                            eprintln!("Auto-update skipped: lock busy");
-                            tokio::time::sleep(Duration::from_secs(6 * 3600)).await;
-                            continue;
-                        }
-                    };
-
-                    // Check for update
-                    match updater::check_for_update().await {
-                        Ok(Some(update)) => {
-                            eprintln!("Auto-update available: v{}", update.version);
-                            if let Err(e) = updater::apply_update(&update).await {
-                                eprintln!("Auto-update failed: {}", e);
-                            }
-                            // exec happens on success, this line never reached
-                        }
-                        Ok(None) => {
-                            // Already up to date, no log needed
-                        }
-                        Err(e) => {
-                            eprintln!("Auto-update check failed: {}", e);
-                        }
-                    }
-
-                    drop(lock);
-
-                    // Sleep 6 hours
-                    tokio::time::sleep(Duration::from_secs(6 * 3600)).await;
-                }
-            });
-        }
-    }
-        
-    // Start auto-update task (release builds only)
-    #[cfg(not(debug_assertions))]
-    {
-        let auto_update_enabled = std::env::var("AUTO_UPDATE_ENABLED")
-            .map(|v| v != "false")
-            .unwrap_or(true);
-
-        if auto_update_enabled {
-            tokio::spawn(async {
-                // Initial delay: 5 minutes after startup
-                tokio::time::sleep(Duration::from_secs(300)).await;
-
-                loop {
-                    // Check if auto-update is still enabled
-                    if std::env::var("AUTO_UPDATE_ENABLED").as_deref() == Ok("false") {
+                    // Re-check on each iteration (env may have been updated)
+                    if !config::AutoUpdateConfig::from_env(std::env::var("AUTO_UPDATE_ENABLED")).enabled {
                         eprintln!("Auto-update disabled via AUTO_UPDATE_ENABLED=false");
                         break;
                     }

@@ -74,13 +74,7 @@ pub fn restore_backup(current_binary: &Path) -> Result<bool, UpdaterError> {
         return Ok(false);
     }
 
-    // Remove current if it exists
-    if current_binary.exists() {
-        fs::remove_file(current_binary)
-            .map_err(|e| UpdaterError::FileIo(format!("Failed to remove current binary: {}", e)))?;
-    }
-
-    // Rename backup to current
+    // rename atomically replaces target — no need to remove_file first
     fs::rename(&backup_path, current_binary)
         .map_err(|e| UpdaterError::FileIo(format!("Failed to restore from backup: {}", e)))?;
 

@@ -176,7 +176,7 @@ lock_file.try_lock()?;  // non-blocking
    - No arbitrary URLs
 
 2. **Asset Name Pattern**:
-   - Asset: `lorian-discock-bot-x86_64-unknown-linux-gnu`
+   - Asset: `lorian-discord-bot-x86_64-unknown-linux-gnu`
    - Checksum: `lorian-discord-bot-x86_64-unknown-linux-gnu.sha256`
 
 3. **Size Cap**:
@@ -384,7 +384,7 @@ jobs:
           gh release create ${{ github.ref_name }} \
             --title "Release ${{ github.ref_name }}" \
             --notes "Automated release" \
-            target/x86_64-unknown-linux-gnu/release/lorian-discord-bot#lorian-discock-bot-x86_64-unknown-linux-gnu \
+            target/x86_64-unknown-linux-gnu/release/lorian-discord-bot#lorian-discord-bot-x86_64-unknown-linux-gnu \
             target/x86_64-unknown-linux-gnu/release/lorian-discord-bot-x86_64-unknown-linux-gnu.sha256
 ```
 

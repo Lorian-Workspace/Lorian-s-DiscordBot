@@ -195,9 +195,14 @@ impl AIManager {
     }
 
     /// Check if a message should be processed by AI
-    pub fn should_process_message(&self, channel_id: &str, author_id: &str) -> bool {
-        // Process if it's in the AI channel and not from the bot itself
-        channel_id == self.config.ai_channel_id && author_id != self.config.owner_info.discord_id
+    ///
+    /// Always gates on the central `config::OWNER_ID` constant, NOT on
+    /// `owner_info.discord_id` from the toml file, so a file-level override
+    /// cannot weaken AI authorization.
+    pub fn should_process_message(&self, channel_id: &str, author_id: u64) -> bool {
+        // Process if it's in the AI channel and not from the bot owner itself.
+        channel_id == self.config.ai_channel_id
+            && author_id != crate::config::OWNER_ID
     }
 
     /// Generate AI response for a user message

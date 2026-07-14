@@ -1,6 +1,8 @@
 //! Download and verify binary with checksum
 
+use reqwest::redirect::Policy;
 use reqwest::Client;
+use serenity::futures::StreamExt;
 use sha2::{Digest, Sha256};
 use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
@@ -23,6 +25,26 @@ const ALLOWED_HOSTS: &[&str] = &[
     "release-assets.githubusercontent.com",
 ];
 
+/// Per-hop redirect policy —- validate each redirect URL against allowed hosts
+fn redirect_policy() -> Policy {
+    Policy::custom(move |attempt| {
+        let url = attempt.url();
+        if !url.as_str().starts_with("https://") {
+            eprintln!("Redirect rejected: non-HTTPS ({})", url);
+            return attempt.error("non-HTTPS redirect");
+        }
+        let allowed = ALLOWED_HOSTS
+            .iter()
+            .any(|h| url.as_str().contains(&format!("{}/", h)) || url.host_str() == Some(h));
+        if allowed {
+            attempt.follow()
+        } else {
+            eprintln!("Redirect rejected: {} not in allowed hosts", url);
+            attempt.error("redirect to disallowed host")
+        }
+    })
+}
+
 /// Download binary and verify checksum
 pub async fn download_and_verify(
     asset_url: &str,
@@ -37,7 +59,7 @@ pub async fn download_and_verify(
         .user_agent(format!("lorian-discord-bot/{}", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(10))
         .timeout(Duration::from_secs(300))
-        .redirect(reqwest::redirect::Policy::limited(5))
+        .redirect(redirect_policy())
         .build()
         .map_err(|e| UpdaterError::Network(e.to_string()))?;
 
@@ -116,17 +138,47 @@ async fn download_checksum(client: &Client, url: &str) -> Result<String, Updater
         return Err(UpdaterError::Network("Checksum file too large".to_string()));
     }
 
-    let text = response
-        .text()
+    // Stream the checksum file with a hard 1 KiB cap — no full body buffering
+    let mut buf: Vec<u8> = Vec::with_capacity(MAX_CHECKSUM_SIZE as usize);
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream
+        .next()
         .await
-        .map_err(|e| UpdaterError::Network(e.to_string()))?;
+        .transpose()
+        .map_err(|e| UpdaterError::Network(e.to_string()))?
+    {
+        if buf.len() + chunk.len() > MAX_CHECKSUM_SIZE as usize {
+            return Err(UpdaterError::Network("Checksum file too large".to_string()));
+        }
+        buf.extend_from_slice(&chunk);
+    }
 
-    // Parse checksum from format: "hash  filename" or "hash filename"
-    let checksum = text
-        .split_whitespace()
+    let text = match std::str::from_utf8(&buf) {
+        Ok(s) => s,
+        Err(_) => {
+            return Err(UpdaterError::InvalidResponse(
+                "Checksum file is not valid UTF-8".to_string(),
+            ));
+        }
+    };
+    // First token must be the 64-char hex SHA-256; second (if any) must be the
+    // exact asset filename, so a crafted checksum line cannot redirect us to a
+    // different file.
+    let expected_asset =
+        crate::config::ASSET_BASE_NAME.to_string() + "-" + crate::config::TARGET_TRIPLE;
+    let mut iter = text.split_whitespace();
+    let checksum = iter
         .next()
         .ok_or_else(|| UpdaterError::InvalidResponse("Empty checksum file".to_string()))?
         .to_lowercase();
+    if let Some(name) = iter.next() {
+        if name != expected_asset {
+            return Err(UpdaterError::InvalidResponse(format!(
+                "Checksum filename mismatch: expected {} got {}",
+                expected_asset, name
+            )));
+        }
+    }
 
     // Validate checksum format (64 hex chars for SHA256)
     if checksum.len() != 64 || !checksum.chars().all(|c| c.is_ascii_hexdigit()) {
@@ -176,23 +228,32 @@ async fn download_binary(
         .open(output_path)
         .map_err(|e| UpdaterError::FileIo(e.to_string()))?;
 
+    let mut response = response;
     let mut downloaded: u64 = 0;
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| UpdaterError::Network(e.to_string()))?;
-
-    downloaded += bytes.len() as u64;
-    if downloaded > MAX_SIZE {
-        drop(file);
-        let _ = std::fs::remove_file(output_path);
-        return Err(UpdaterError::Network("Binary too large".to_string()));
-    }
-
     let mut hasher = Sha256::new();
-    hasher.update(&bytes);
-    file.write_all(&bytes)
-        .map_err(|e| UpdaterError::FileIo(e.to_string()))?;
+
+    // Stream chunks to bound memory usage
+    loop {
+        let chunk = response
+            .chunk()
+            .await
+            .map_err(|e| UpdaterError::Network(e.to_string()))?;
+
+        match chunk {
+            Some(bytes) => {
+                downloaded += bytes.len() as u64;
+                if downloaded > MAX_SIZE {
+                    drop(file);
+                    let _ = std::fs::remove_file(output_path);
+                    return Err(UpdaterError::Network("Binary too large".to_string()));
+                }
+                hasher.update(&bytes);
+                file.write_all(&bytes)
+                    .map_err(|e| UpdaterError::FileIo(e.to_string()))?;
+            }
+            None => break, // stream complete
+        }
+    }
 
     // Sync to disk
     file.sync_all()
@@ -214,9 +275,7 @@ async fn download_binary(
 fn validate_final_url(url: &str) -> Result<(), UpdaterError> {
     // Must be HTTPS
     if !url.starts_with("https://") {
-        return Err(UpdaterError::Network(
-            "Final URL must be HTTPS".to_string(),
-        ));
+        return Err(UpdaterError::Network("Final URL must be HTTPS".to_string()));
     }
 
     // Must be from allowed hosts

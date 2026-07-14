@@ -942,6 +942,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "dotenv",
+ "libc",
  "rand 0.8.7",
  "regex",
  "reqwest 0.11.27",

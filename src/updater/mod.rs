@@ -12,7 +12,9 @@ mod replace;
 mod state;
 
 use semver::Version;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
+use std::os::unix::fs::OpenOptionsExt;
+use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -20,7 +22,9 @@ use tokio::sync::Mutex;
 pub use download::download_and_verify;
 pub use github::fetch_latest_release;
 pub use replace::atomic_replace;
-pub use state::{clear_state, load_state, save_state, UpdateState};
+pub use state::{
+    clear_state, load_state, reconcile_startup_state, save_state, UpdatePhase, UpdateState,
+};
 
 use crate::config;
 
@@ -33,6 +37,25 @@ fn lock_file_path() -> PathBuf {
     std::env::current_exe()
         .unwrap_or_else(|_| PathBuf::from("."))
         .with_extension("update.lock")
+}
+
+/// Open the cross-process lock file with O_NOFOLLOW + owner/mode validation.
+/// Returns `None` when the lock file does not exist yet (caller should create it).
+fn open_lock_file(path: &std::path::Path) -> Result<Option<File>, std::io::Error> {
+    use std::os::unix::fs::OpenOptionsExt;
+
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .custom_flags(libc::O_NOFOLLOW)
+        .open(path)?;
+
+    state::validate_regular_file(&file, path)?;
+    Ok(Some(file))
 }
 
 /// Error types for the updater
@@ -132,28 +155,58 @@ pub async fn apply_update(update: &UpdateInfo) -> Result<(), UpdaterError> {
 
     // Try to acquire cross-process lock
     let lock_path = lock_file_path();
-    let cross_lock_file = File::create(&lock_path)
-        .map_err(|e| UpdaterError::FileIo(format!("Failed to create lock file: {}", e)))?;
+    let cross_lock_file = {
+        // Try existing lock file first (with O_NOFOLLOW validation)
+        let existing = open_lock_file(&lock_path)
+            .map_err(|e| UpdaterError::FileIo(format!("Failed to access lock file: {}", e)))?;
 
-    if cross_lock_file.try_lock().is_err() {
+        match existing {
+            Some(file) => file,
+            None => {
+                // Create new lock file with O_NOFOLLOW + create_new
+                let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create_new(true)
+                    .mode(0o600)
+                    .custom_flags(libc::O_NOFOLLOW)
+                    .open(&lock_path)
+                    .map_err(|e| {
+                        UpdaterError::FileIo(format!("Failed to create lock file: {}", e))
+                    })?;
+                state::validate_regular_file(&file, &lock_path)
+                    .map_err(|e| UpdaterError::FileIo(e.to_string()))?;
+                file
+            }
+        }
+    };
+
+    if unsafe { libc::flock(cross_lock_file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) != 0 } {
         drop(process_lock);
         return Err(UpdaterError::LockBusy);
     }
 
     // Capture original exe path BEFORE any rename
-    let original_exe = std::env::current_exe()
-        .map_err(|e| UpdaterError::FileIo(e.to_string()))?;
+    let original_exe = std::env::current_exe().map_err(|e| UpdaterError::FileIo(e.to_string()))?;
 
-    // Save state
-    let state = UpdateState {
+    let temp_path = original_exe.with_extension("part");
+    let backup_path = original_exe.with_extension("bak");
+
+    // Initialize state with Started phase
+    let mut state = UpdateState {
+        phase: state::UpdatePhase::Started,
         version: update.version.clone(),
         started_at: chrono::Utc::now(),
+        original_path: original_exe.clone(),
+        staged_path: temp_path.clone(),
+        backup_path: backup_path.clone(),
     };
     save_state(&state).map_err(|e| UpdaterError::FileIo(e.to_string()))?;
 
-    let temp_path = original_exe.with_extension("part");
-
     // Download and verify
+    state.phase = state::UpdatePhase::Downloading;
+    save_state(&state).map_err(|e| UpdaterError::FileIo(e.to_string()))?;
+
     if let Err(e) = download_and_verify(&update.asset_url, &update.checksum_url, &temp_path).await {
         let _ = std::fs::remove_file(&temp_path);
         let _ = clear_state();
@@ -163,6 +216,9 @@ pub async fn apply_update(update: &UpdateInfo) -> Result<(), UpdaterError> {
     }
 
     // Self-check
+    state.phase = state::UpdatePhase::SelfChecking;
+    save_state(&state).map_err(|e| UpdaterError::FileIo(e.to_string()))?;
+
     if let Err(e) = self_check(&temp_path, &update.version).await {
         let _ = std::fs::remove_file(&temp_path);
         let _ = clear_state();
@@ -171,7 +227,14 @@ pub async fn apply_update(update: &UpdateInfo) -> Result<(), UpdaterError> {
         return Err(e);
     }
 
+    // Backup original
+    state.phase = state::UpdatePhase::BackedUp;
+    save_state(&state).map_err(|e| UpdaterError::FileIo(e.to_string()))?;
+
     // Atomic replace
+    state.phase = state::UpdatePhase::Replacing;
+    save_state(&state).map_err(|e| UpdaterError::FileIo(e.to_string()))?;
+
     if let Err(e) = atomic_replace(&temp_path, &original_exe) {
         let _ = std::fs::remove_file(&temp_path);
         let _ = clear_state();
@@ -182,25 +245,26 @@ pub async fn apply_update(update: &UpdateInfo) -> Result<(), UpdaterError> {
 
     // Restart with original exe path
     if let Err(e) = restart(&original_exe) {
-        // Exec failed - attempt to restore backup
-        let backup_path = original_exe.with_extension("bak");
+        // Exec failed — attempt rollback. rename atomically replaces target,
+        // so no need to remove the original first.
         if backup_path.exists() {
-            let _ = std::fs::remove_file(&original_exe);
             if let Err(restore_err) = std::fs::rename(&backup_path, &original_exe) {
                 eprintln!("CRITICAL: Failed to restore backup: {}", restore_err);
-            } else {
-                // fsync after restore
-                if let Ok(file) = File::open(&original_exe) {
-                    let _ = file.sync_all();
-                }
-                if let Some(parent) = original_exe.parent() {
-                    if let Ok(dir) = File::open(parent) {
-                        let _ = dir.sync_all();
-                    }
+                drop(cross_lock_file);
+                drop(process_lock);
+                return Err(UpdaterError::ExecFailed(e.to_string()));
+            }
+            // fsync after restore
+            if let Ok(file) = File::open(&original_exe) {
+                let _ = file.sync_all();
+            }
+            if let Some(parent) = original_exe.parent() {
+                if let Ok(dir) = File::open(parent) {
+                    let _ = dir.sync_all();
                 }
             }
         }
-        // Clear state on failure
+        // Clear state after successful restore
         let _ = clear_state();
         drop(cross_lock_file);
         drop(process_lock);
@@ -279,17 +343,6 @@ pub fn current_version() -> Version {
     Version::parse(env!("CARGO_PKG_VERSION")).unwrap_or_else(|_| Version::new(0, 0, 0))
 }
 
-/// Check for pending update state on startup
-pub fn check_pending_on_startup() {
-    if let Some(state) = load_state() {
-        eprintln!(
-            "WARNING: Found pending update state for v{} started at {}. \
-             If the new process failed to start, manually restore from .bak file.",
-            state.version, state.started_at
-        );
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -353,12 +406,18 @@ mod tests {
 
     #[test]
     fn test_state_persistence() {
+        use std::path::PathBuf;
+
         let temp_dir = TempDir::new().unwrap();
         let state_path = temp_dir.path().join("test_state.json");
 
         let state = UpdateState {
+            phase: state::UpdatePhase::Downloading,
             version: Version::new(1, 2, 3),
             started_at: chrono::Utc::now(),
+            original_path: PathBuf::from("/tmp/original"),
+            staged_path: PathBuf::from("/tmp/staged"),
+            backup_path: PathBuf::from("/tmp/backup"),
         };
 
         let json = serde_json::to_string(&state).unwrap();
@@ -368,6 +427,7 @@ mod tests {
         let loaded: UpdateState = serde_json::from_str(&loaded_json).unwrap();
 
         assert_eq!(state.version, loaded.version);
+        assert_eq!(state.phase, loaded.phase);
     }
 
     #[test]
