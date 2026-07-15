@@ -364,6 +364,20 @@ impl EventHandler for Handler {
                 .description(&lang_msgs.commands.feedback_setup.description),
             CreateCommand::new("update")
                 .description("Check for and apply bot updates (owner only)"),
+            CreateCommand::new("github_channel")
+                .description("Set the GitHub activity announcements channel (owner only)")
+                .add_option(serenity::builder::CreateCommandOption::new(
+                    serenity::model::application::CommandOptionType::Channel,
+                    "channel",
+                    "Channel for GitHub announcements",
+                ).required(true)),
+            CreateCommand::new("ai_channel")
+                .description("Set the AI conversation channel (owner only)")
+                .add_option(serenity::builder::CreateCommandOption::new(
+                    serenity::model::application::CommandOptionType::Channel,
+                    "channel",
+                    "Channel for AI conversations",
+                ).required(true)),
         ];
 
         let _ = Command::set_global_commands(&ctx.http, commands).await;
@@ -398,7 +412,11 @@ impl EventHandler for Handler {
         }
 
         // Check if this is a message in the AI channel (tickets excluded)
-        let should_process = self.ai_manager.should_process_message(&msg.channel_id.to_string(), msg.author.id.get());
+        let should_process = self.ai_manager.should_process_message(
+            &msg.channel_id.to_string(),
+            msg.author.id.get(),
+            self.data_manager.get_ai_channel(),
+        );
             
         if should_process {
             if let Err(e) = self.handle_ai_message(&ctx, &msg).await {
@@ -687,6 +705,16 @@ impl EventHandler for Handler {
                     // Handle update command
                     if let Err(e) = commands::handle_update_command(&ctx, &command).await {
                         eprintln!("Error handling update command: {}", e);
+                    }
+                },
+                "github_channel" => {
+                    if let Err(e) = commands::handle_github_channel_command(&ctx, &command, &self.data_manager).await {
+                        eprintln!("Error handling github_channel command: {}", e);
+                    }
+                },
+                "ai_channel" => {
+                    if let Err(e) = commands::handle_ai_channel_command(&ctx, &command, &self.data_manager).await {
+                        eprintln!("Error handling ai_channel command: {}", e);
                     }
                 },
                 _ => {
@@ -1032,6 +1060,28 @@ async fn main() {
             // Create a simple context for sending messages
             if let Err(e) = check_and_send_reminders(&handler_for_task, &http_clone).await {
                 eprintln!("Error checking reminders: {}", e);
+            }
+        }
+    });
+
+    // Start GitHub activity feed task
+    let http_github = client.http.clone();
+    let handler_for_github = Arc::clone(&handler_arc);
+    tokio::spawn(async move {
+        let github_client = reqwest::Client::new();
+        let mut etag: Option<String> = None;
+        let mut interval = interval(Duration::from_secs(300)); // Poll every 5 minutes
+        loop {
+            interval.tick().await;
+            if let Err(e) = commands::poll_github_events(
+                &http_github,
+                &handler_for_github.data_manager,
+                &github_client,
+                &mut etag,
+            )
+            .await
+            {
+                eprintln!("GitHub feed error: {}", e);
             }
         }
     });

@@ -248,6 +248,39 @@ impl DataManager {
         })
     }
 
+    /// Get GitHub feed configuration
+    pub fn get_github_feed(&self) -> crate::data::GithubFeedData {
+        let data = self.data.lock().unwrap();
+        data.github_feed.clone()
+    }
+
+    /// Set the GitHub announcements channel
+    pub fn set_github_channel(&self, channel_id: u64) -> Result<(), Box<dyn std::error::Error>> {
+        self.update_data(|data| {
+            data.github_feed.channel_id = Some(channel_id);
+        })
+    }
+
+    /// Record the newest announced GitHub event ID
+    pub fn set_github_last_event(&self, event_id: u64) -> Result<(), Box<dyn std::error::Error>> {
+        self.update_data(|data| {
+            data.github_feed.last_event_id = Some(event_id);
+        })
+    }
+
+    /// Get the owner-configured AI channel override
+    pub fn get_ai_channel(&self) -> Option<u64> {
+        let data = self.data.lock().unwrap();
+        data.ai_channel_id
+    }
+
+    /// Set the AI channel override
+    pub fn set_ai_channel(&self, channel_id: u64) -> Result<(), Box<dyn std::error::Error>> {
+        self.update_data(|data| {
+            data.ai_channel_id = Some(channel_id);
+        })
+    }
+
     /// Add feedback message
     pub fn add_feedback_message(&self, feedback_message: crate::data::FeedbackMessage) -> Result<(), Box<dyn std::error::Error>> {
         let message_id = feedback_message.message_id.clone();

@@ -30,6 +30,12 @@ pub const TARGET_TRIPLE: &str = "x86_64-unknown-linux-gnu";
 /// And the checksum file: `{ASSET_BASE_NAME}-{TARGET_TRIPLE}.sha256`
 pub const ASSET_BASE_NAME: &str = "lorian-discord-bot";
 
+/// The GitHub account whose public activity is announced by the bot.
+///
+/// Used by the GitHub feed task (`commands::github`) to poll
+/// `https://api.github.com/users/{GITHUB_USER}/events/public`.
+pub const GITHUB_USER: &str = "Solar2004";
+
 /// Parsed auto-update configuration.
 ///
 /// Behaviour (precedence — first match wins):

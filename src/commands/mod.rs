@@ -4,6 +4,7 @@ pub mod commission;
 pub mod ticket;
 pub mod feedback;
 pub mod update;
+pub mod github;
 
 use serenity::all::{
     CreateEmbed, CreateEmbedFooter, CreateInteractionResponse, CreateInteractionResponseMessage, 
@@ -39,6 +40,56 @@ pub use feedback::{
 
 // Re-export update function
 pub use update::handle_update_command;
+
+// Re-export GitHub feed functions
+pub use github::{handle_github_channel_command, poll_github_events};
+
+/// Handle the /ai_channel command (owner only): persist the AI channel override
+pub async fn handle_ai_channel_command(
+    ctx: &Context,
+    command: &CommandInteraction,
+    data_manager: &DataManager,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if command.user.id.get() != crate::config::OWNER_ID {
+        let response = CreateInteractionResponse::Message(
+            CreateInteractionResponseMessage::new()
+                .content("❌ Unauthorized. This command is owner-only.")
+                .ephemeral(true),
+        );
+        command.create_response(&ctx.http, response).await?;
+        return Ok(());
+    }
+
+    let channel_id = match command.data.options.first().map(|o| &o.value) {
+        Some(CommandDataOptionValue::Channel(id)) => id.get(),
+        _ => {
+            let response = CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new()
+                    .content("❌ Missing channel option.")
+                    .ephemeral(true),
+            );
+            command.create_response(&ctx.http, response).await?;
+            return Ok(());
+        }
+    };
+
+    data_manager
+        .set_ai_channel(channel_id)
+        .map_err(|e| e.to_string())?;
+
+    let embed = CreateEmbed::new()
+        .title("✅ AI Channel Set")
+        .description(format!("AI conversations now happen in <#{}>.", channel_id))
+        .color(Color::from_rgb(88, 166, 255));
+
+    let response = CreateInteractionResponse::Message(
+        CreateInteractionResponseMessage::new()
+            .add_embed(embed)
+            .ephemeral(true),
+    );
+    command.create_response(&ctx.http, response).await?;
+    Ok(())
+}
 
 /// Handle the /stats command
 pub async fn handle_stats_command(
