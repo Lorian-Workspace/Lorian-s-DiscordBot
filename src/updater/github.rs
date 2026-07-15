@@ -10,8 +10,6 @@ use super::{config, UpdaterError};
 #[derive(Debug, Clone, Deserialize)]
 pub struct Release {
     pub tag_name: String,
-    pub name: Option<String>,
-    pub body: Option<String>,
     pub draft: bool,
     pub prerelease: bool,
     pub assets: Vec<Asset>,
@@ -21,8 +19,6 @@ pub struct Release {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Asset {
     pub name: String,
-    pub browser_download_url: String,
-    pub size: u64,
 }
 
 /// Fetch the latest stable release from GitHub

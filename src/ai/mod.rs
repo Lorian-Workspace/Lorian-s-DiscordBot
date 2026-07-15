@@ -816,8 +816,13 @@ impl AIManager {
         &self.config.ai_channel_id
     }
 
-    /// Get owner Discord ID
-    pub fn get_owner_id(&self) -> &str {
-        &self.config.owner_info.discord_id
+    /// Get the canonical owner Discord ID.
+    ///
+    /// Always returns the central `config::OWNER_ID` constant. The `toml`
+    /// file's `discord_id` is **only** used for AI prompt context (name, bio);
+    /// it cannot override owner authorization. Returns the decimal string form
+    /// for callers that embed it in prompt text.
+    pub fn get_owner_id(&self) -> String {
+        crate::config::OWNER_ID.to_string()
     }
 }

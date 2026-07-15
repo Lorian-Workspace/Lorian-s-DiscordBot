@@ -38,23 +38,34 @@ pub const ASSET_BASE_NAME: &str = "lorian-discord-bot";
 /// 3. Case-insensitive `"false"`, `"no"`, `"0"` → disabled
 /// 4. Any other value → ERROR (logged at level `error`), disabled
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg(any(not(debug_assertions), test))]
 pub struct AutoUpdateConfig {
     pub enabled: bool,
 }
 
+#[cfg(any(not(debug_assertions), test))]
 impl AutoUpdateConfig {
     /// Parse from an env-var string (e.g. `std::env::var("AUTO_UPDATE_ENABLED")`).
     pub fn from_env(raw: Result<String, std::env::VarError>) -> Self {
         let val = match raw {
             Ok(v) => v,
-            Err(_) => return Self { enabled: true },
+            Err(std::env::VarError::NotPresent) => return Self { enabled: true },
+            Err(std::env::VarError::NotUnicode(_)) => {
+                eprintln!(
+                    "ERROR: AUTO_UPDATE_ENABLED is not valid Unicode — disabling auto-update."
+                );
+                return Self { enabled: false };
+            }
         };
 
-        match val.to_lowercase().as_str() {
+        match val.to_ascii_lowercase().as_str() {
             "true" | "yes" | "1" => Self { enabled: true },
-            "" | "false" | "no" | "0" => Self { enabled: false },
+            "false" | "no" | "0" => Self { enabled: false },
             other => {
-                eprintln!("ERROR: invalid AUTO_UPDATE_ENABLED value {:?} — disabling auto-update. Expected true/false.", other);
+                eprintln!(
+                    "ERROR: invalid AUTO_UPDATE_ENABLED value {:?} — disabling auto-update. Expected one of: true, false, yes, no, 1, 0.",
+                    other
+                );
                 Self { enabled: false }
             }
         }
@@ -81,7 +92,7 @@ mod tests {
 
     #[test]
     fn test_auto_update_disabled_values() {
-        for val in &["false", "FALSE", "False", "no", "NO", "0", ""] {
+        for val in &["false", "FALSE", "False", "no", "NO", "0"] {
             let cfg = AutoUpdateConfig::from_env(Ok(val.to_string()));
             assert!(!cfg.enabled, "expected disabled for {:?}", val);
         }
@@ -92,5 +103,25 @@ mod tests {
         // Invalid values log an error and return disabled
         let cfg = AutoUpdateConfig::from_env(Ok("garbage".to_string()));
         assert!(!cfg.enabled);
+    }
+
+    #[test]
+    fn test_auto_update_empty_value_is_invalid_and_disabled() {
+        let cfg = AutoUpdateConfig::from_env(Ok(String::new()));
+        assert!(!cfg.enabled);
+    }
+
+    #[test]
+    fn test_auto_update_not_unicode_is_invalid_and_disabled() {
+        #[cfg(unix)]
+        {
+            use std::ffi::OsString;
+            use std::os::unix::ffi::OsStringExt;
+
+            let cfg = AutoUpdateConfig::from_env(Err(std::env::VarError::NotUnicode(
+                OsString::from_vec(vec![0xff]),
+            )));
+            assert!(!cfg.enabled);
+        }
     }
 }

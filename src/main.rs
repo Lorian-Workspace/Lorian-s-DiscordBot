@@ -687,10 +687,6 @@ impl EventHandler for Handler {
                     // Handle update command
                     if let Err(e) = commands::handle_update_command(&ctx, &command).await {
                         eprintln!("Error handling update command: {}", e);
-                        let data = CreateInteractionResponseMessage::new()
-                            .content("Error checking for updates.");
-                        let builder = CreateInteractionResponse::Message(data);
-                        let _ = command.create_response(&ctx.http, builder).await;
                     }
                 },
                 _ => {
@@ -977,22 +973,22 @@ async fn check_and_send_reminders(handler: &Handler, http: &Arc<serenity::http::
 
 #[tokio::main]
 async fn main() {
-    dotenv::dotenv().ok();
-    // Handle --version and --self-check before any initialization
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() > 1 {
-        match args[1].as_str() {
-            "--version" | "-V" => {
-                println!("v{}", env!("CARGO_PKG_VERSION"));
-                return;
-            }
-            "--self-check" => {
-                println!("v{}", env!("CARGO_PKG_VERSION"));
-                return;
-            }
-            _ => {}
+    // Handle --version and --self-check before any initialization, dotenv, or token access.
+    if let Some(arg) = std::env::args_os().nth(1) {
+        use std::ffi::OsStr;
+
+        if arg == OsStr::new("--version") || arg == OsStr::new("-V") {
+            println!("v{}", env!("CARGO_PKG_VERSION"));
+            return;
+        }
+
+        if arg == OsStr::new("--self-check") {
+            println!("v{}", env!("CARGO_PKG_VERSION"));
+            return;
         }
     }
+
+    dotenv::dotenv().ok();
 
     // Reconcile any pending update state from prior crash / exec failure
     if let Err(e) = updater::reconcile_startup_state() {

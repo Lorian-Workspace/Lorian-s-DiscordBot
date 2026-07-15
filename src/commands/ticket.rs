@@ -176,7 +176,10 @@ pub async fn handle_ticket_create(
 
     // Add owner permissions
     permission_overwrites.push(PermissionOverwrite {
-        allow: Permissions::VIEW_CHANNEL | Permissions::SEND_MESSAGES | Permissions::READ_MESSAGE_HISTORY | Permissions::MANAGE_MESSAGES,
+        allow: Permissions::VIEW_CHANNEL
+            | Permissions::SEND_MESSAGES
+            | Permissions::READ_MESSAGE_HISTORY
+            | Permissions::MANAGE_MESSAGES,
         deny: Permissions::empty(),
         kind: PermissionOverwriteType::Member(UserId::new(crate::config::OWNER_ID)),
     });
@@ -198,7 +201,7 @@ pub async fn handle_ticket_create(
             let welcome_embed = CreateEmbed::new()
                 .title("🎫 Ticket Created Successfully")
                 .description(&format!(
-                    "Welcome to your support ticket, {}! Please describe your issue or question in detail. Our team has been notified and will respond shortly.\n\n<@{}>", 
+                    "Welcome to your support ticket, {}! Please describe your issue or question in detail. Our team has been notified and will respond shortly.\n\n<@{}>",
                     component.user.name,
                     crate::config::OWNER_ID
                 ))
@@ -357,7 +360,8 @@ pub async fn handle_ticket_close_command(
     let user_id = command.user.id;
 
     // Check if this is a ticket channel
-    let is_ticket_channel = channel_id.to_string().starts_with("ticket-") || 
+    let is_ticket_channel = channel_id.to_string().starts_with("ticket-")
+        ||
         data_manager.is_ticket_channel(&channel_id.to_string());
 
     if !is_ticket_channel {
@@ -374,7 +378,7 @@ pub async fn handle_ticket_close_command(
     }
 
     // Check permissions (creator or owner)
-    let has_permission = user_id.get() == crate::config::OWNER_ID || 
+    let has_permission = user_id.get() == crate::config::OWNER_ID ||
         data_manager.is_ticket_creator(&channel_id.to_string(), &user_id.to_string());
 
     if !has_permission {

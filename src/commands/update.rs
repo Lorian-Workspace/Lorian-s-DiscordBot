@@ -8,13 +8,17 @@ use serenity::all::{
 use crate::config;
 use crate::updater;
 
+fn is_owner(user_id: u64) -> bool {
+    user_id == config::OWNER_ID
+}
+
 /// Handle the /update command
 pub async fn handle_update_command(
     ctx: &Context,
     command: &CommandInteraction,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Owner gate
-    if command.user.id.get() != config::OWNER_ID {
+    if !is_owner(command.user.id.get()) {
         let response = CreateInteractionResponse::Message(
             CreateInteractionResponseMessage::new()
                 .content("❌ Unauthorized. This command is owner-only.")
@@ -109,4 +113,19 @@ pub async fn handle_update_command(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_owner;
+
+    #[test]
+    fn is_owner_rejects_non_owner() {
+        assert!(!is_owner(1));
+    }
+
+    #[test]
+    fn is_owner_accepts_configured_owner() {
+        assert!(is_owner(crate::config::OWNER_ID));
+    }
 }
