@@ -18,6 +18,8 @@ mod data;
 mod ai;
 mod commands;
 mod events;
+mod config;
+mod updater;
 
 use lang::{LanguageManager, ImageManager, EmojiManager};
 use data::{DataManager, AIMessage, MessageRole};
@@ -279,6 +281,12 @@ impl Handler {
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{}", self.lang.format_bot_connected(&ready.user.name));
+
+        // Clear pending update state after successful Discord connection
+        if let Err(e) = updater::clear_state() {
+            eprintln!("Warning: Failed to clear update state: {}", e);
+        }
+
         self.safety
             .ready(
                 &ctx,
@@ -354,6 +362,8 @@ impl EventHandler for Handler {
                 .description(&lang_msgs.commands.ticket_close.description),
             CreateCommand::new(&lang_msgs.commands.feedback_setup.name)
                 .description(&lang_msgs.commands.feedback_setup.description),
+            CreateCommand::new("update")
+                .description("Check for and apply bot updates (owner only)"),
         ];
 
         let _ = Command::set_global_commands(&ctx.http, commands).await;
@@ -388,7 +398,7 @@ impl EventHandler for Handler {
         }
 
         // Check if this is a message in the AI channel (tickets excluded)
-        let should_process = self.ai_manager.should_process_message(&msg.channel_id.to_string(), &msg.author.id.to_string());
+        let should_process = self.ai_manager.should_process_message(&msg.channel_id.to_string(), msg.author.id.get());
             
         if should_process {
             if let Err(e) = self.handle_ai_message(&ctx, &msg).await {
@@ -398,12 +408,10 @@ impl EventHandler for Handler {
 
         // Handle ticket channel notifications separately (without AI responses)
         if self.data_manager.is_ticket_channel(&msg.channel_id.to_string()) {
-            const OWNER_ID: &str = "1400464001133056111";
-            
             // Only mention if the message author is not the owner
-            if msg.author.id.to_string() != OWNER_ID {
+            if msg.author.id.get() != crate::config::OWNER_ID {
                 // Send a simple mention to notify the owner (optional, can be removed if too spammy)
-                // let mention_content = format!("<@{}>", OWNER_ID);
+                // let mention_content = format!("<@{}>", crate::config::OWNER_ID);
                 // let _ = msg.channel_id.say(&ctx.http, &mention_content).await;
             }
         }
@@ -673,6 +681,12 @@ impl EventHandler for Handler {
                             .content("Error setting up feedback system.");
                         let builder = CreateInteractionResponse::Message(data);
                         let _ = command.create_response(&ctx.http, builder).await;
+                    }
+                },
+                "update" => {
+                    // Handle update command
+                    if let Err(e) = commands::handle_update_command(&ctx, &command).await {
+                        eprintln!("Error handling update command: {}", e);
                     }
                 },
                 _ => {
@@ -959,7 +973,27 @@ async fn check_and_send_reminders(handler: &Handler, http: &Arc<serenity::http::
 
 #[tokio::main]
 async fn main() {
+    // Handle --version and --self-check before any initialization, dotenv, or token access.
+    if let Some(arg) = std::env::args_os().nth(1) {
+        use std::ffi::OsStr;
+
+        if arg == OsStr::new("--version") || arg == OsStr::new("-V") {
+            println!("v{}", env!("CARGO_PKG_VERSION"));
+            return;
+        }
+
+        if arg == OsStr::new("--self-check") {
+            println!("v{}", env!("CARGO_PKG_VERSION"));
+            return;
+        }
+    }
+
     dotenv::dotenv().ok();
+
+    // Reconcile any pending update state from prior crash / exec failure
+    if let Err(e) = updater::reconcile_startup_state() {
+        eprintln!("WARNING: reconcile_startup_state: {}", e);
+    }
     
     let handler = match Handler::new() {
         Ok(h) => h,
@@ -1001,7 +1035,48 @@ async fn main() {
             }
         }
     });
-        
+
+    // Start auto-update task (release builds only)
+    #[cfg(not(debug_assertions))]
+    {
+        let auto_update = config::AutoUpdateConfig::from_env(std::env::var("AUTO_UPDATE_ENABLED"));
+
+        if auto_update.enabled {
+            tokio::spawn(async {
+                // Initial delay: 5 minutes after startup
+                tokio::time::sleep(Duration::from_secs(300)).await;
+
+                loop {
+                    // Re-check on each iteration (env may have been updated)
+                    if !config::AutoUpdateConfig::from_env(std::env::var("AUTO_UPDATE_ENABLED")).enabled {
+                        eprintln!("Auto-update disabled via AUTO_UPDATE_ENABLED=false");
+                        break;
+                    }
+
+                    // Check for update
+                    match updater::check_for_update().await {
+                        Ok(Some(update)) => {
+                            eprintln!("Auto-update available: v{}", update.version);
+                            if let Err(e) = updater::apply_update(&update).await {
+                                eprintln!("Auto-update failed: {}", e);
+                            }
+                            // exec happens on success, this line never reached
+                        }
+                        Ok(None) => {
+                            // Already up to date, no log needed
+                        }
+                        Err(e) => {
+                            eprintln!("Auto-update check failed: {}", e);
+                        }
+                    }
+
+                    // Sleep 6 hours
+                    tokio::time::sleep(Duration::from_secs(6 * 3600)).await;
+                }
+            });
+        }
+    }
+
     if let Err(why) = client.start().await {
         println!("Error starting bot: {:?}", why);
     }

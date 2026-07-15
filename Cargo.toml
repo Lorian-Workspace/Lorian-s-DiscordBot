@@ -1,20 +1,33 @@
 [package]
 name = "lorian-discord-bot"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
+rust-version = "1.89"
 
 [dependencies]
 serenity = { version = "0.12", features = ["gateway", "http", "model", "client"] }
-tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time", "process", "fs"] }
 dotenv = "0.15"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
 chrono = { version = "0.4", features = ["serde"] }
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11", features = ["json", "stream"] }
 rand = "0.8"
 regex = "1.0"
 uuid = { version = "1.0", features = ["v4"] }
+semver = { version = "1.0", features = ["serde"] }
+sha2 = "0.10"
+
+# Direct libc dependency for O_NOFOLLOW on lock/state files.
+# Security: O_NOFOLLOW prevents symlink-following attacks where an attacker
+# places a symlink at the expected lock/state path pointing to a critical
+# file. Combined with post-open uid/mode/regular-file validation this
+# provides defense-in-depth against TOCTOU races on the file system.
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3.10"
 
 [profile.release]
 opt-level = 3
@@ -22,7 +35,6 @@ lto = true
 codegen-units = 1
 panic = "abort"
 
-# Optimize development builds for faster compilation
 [profile.dev]
 opt-level = 0
 debug = true
@@ -33,7 +45,6 @@ panic = 'unwind'
 incremental = true
 codegen-units = 256
 
-# Faster builds for dependencies (they don't change often)
 [profile.dev.package."*"]
 opt-level = 1
 debug = false

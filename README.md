@@ -16,7 +16,7 @@ Un bot de Discord de alto rendimiento desarrollado en **Rust** usando el framewo
 
 ### Prerrequisitos
 
-- [Rust](https://rustup.rs/) (versión 1.70 o superior)
+- [Rust](https://rustup.rs/) (versión 1.89 o superior)
 - [Git](https://git-scm.com/)
 
 ### Pasos de instalación
@@ -37,7 +37,6 @@ Un bot de Discord de alto rendimiento desarrollado en **Rust** usando el framewo
    ```bash
    # Crear archivo .env
    echo "DISCORD_TOKEN=tu_token_aqui" > .env
-   echo "DISCORD_OWNER_ID=tu_id_de_owner" >> .env
    echo "SERVER_INVITE_URL=https://discord.gg/tu_codigo_estable" >> .env
    echo "VERIFICATION_CHANNEL_ID=tu_canal_de_verificacion" >> .env
    echo "UNVERIFIED_ROLE_ID=tu_rol_no_verificado" >> .env
@@ -92,18 +91,16 @@ src/
 
 ### Variables de entorno
 
-| Variable         | Descripción                        | Por defecto |
-|------------------|------------------------------------|-------------|
+| Variable | Descripción | Por defecto |
+|----------|-------------|-------------|
 | `DISCORD_TOKEN` | Token del bot de Discord | Requerido |
-| `DISCORD_OWNER_ID` | Único usuario humano autorizado para publicar anuncios por DM | Requerido |
 | `SERVER_INVITE_URL` | Invitación estable existente (`https://discord.gg/...` o `https://discord.com/invite/...`) | Requerido |
 | `VERIFICATION_CHANNEL_ID` | Canal del panel canónico de verificación/suscripción | Requerido |
 | `UNVERIFIED_ROLE_ID` | Rol aplicado a miembros que entren después del cutoff | Requerido |
 | `VERIFIED_ROLE_ID` | Rol aplicado al verificar | Requerido |
 | `SUBSCRIBER_ROLE_ID` | Rol separado para la suscripción opcional a DMs de anuncios | Requerido |
 | `RUST_LOG` | Nivel de logging | `info` |
-
-Los seis IDs/URL de seguridad son fail-closed: si faltan o son inválidos, el bot no inicia; si Discord no permite validar canales, roles, jerarquía o permisos durante `ready`, toda la función de seguridad queda desactivada. Los canales fijos son:
+El owner ID está hardcodeado en `src/config.rs` (`OWNER_ID`). Los cinco IDs/URL de seguridad son fail-closed: si faltan o son inválidos, el bot no inicia; si Discord no permite validar canales, roles, jerarquía o permisos durante `ready`, toda la función de seguridad queda desactivada. Los canales fijos son:
 
 - Anuncios: `1400467682440118333`.
 - Barrera/honeypot: `1526610057511567380`.
@@ -146,7 +143,7 @@ Activa estos Gateway Intents:
 
 ### Anuncios y barrera de seguridad
 
-Sólo un mensaje humano, no-webhook, de `DISCORD_OWNER_ID` en `1400467682440118333` inicia un anuncio. El bot toma una instantánea de suscriptores elegibles, revalida ledger/rol/membresía antes de cada DM, excluye bots y autor, desactiva menciones, envía secuencialmente y persiste dedupe por mensaje fuente. Serenity gestiona rate limits; no hay sleeps fijos.
+Sólo un mensaje humano, no-webhook, del owner hardcodeado (`OWNER_ID` en `src/config.rs`) en `1400467682440118333` inicia un anuncio. El bot toma una instantánea de suscriptores elegibles, revalida ledger/rol/membresía antes de cada DM, excluye bots y autor, desactiva menciones, envía secuencialmente y persiste dedupe por mensaje fuente. Serenity gestiona rate limits; no hay sleeps fijos.
 
 El canal `1526610057511567380` mantiene exactamente un aviso canónico en seis idiomas. Ese aviso declara que publicar allí provoca un DM de seguridad con la invitación estable, un ban temporal con `delete_message_seconds=172800` y un unban inmediato. Fallo de ban no intenta unban; fallo de unban queda marcado como CRITICAL y se recupera en `ready`. La imagen semántica `safety.barrier` está en `bot_images.toml`; URL ausente/inválida omite la imagen sin detener el aviso.
 
@@ -206,6 +203,29 @@ Este bot está optimizado para:
 ## 📝 Licencia
 
 Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
+## 🔄 Auto-Update
+
+El bot incluye un sistema de auto-actualización para Linux x86_64:
+
+- **Activación**: Sólo en builds de release
+- **Intervalo**: Verifica cada 6 horas
+- **`AUTO_UPDATE_ENABLED`**:
+  - unset => habilitado
+  - `true`/`yes`/`1` => habilitado
+  - `false`/`no`/`0` => deshabilitado
+  - inválido o no-Unicode => `ERROR` y deshabilitado
+- **Manual**: `/update` (solo owner)
+- **Trust root**: repositorio GitHub + workflow de release en `main` + TLS + SHA256
+- **Sin token runtime**: no usa `GITHUB_TOKEN` ni URL arbitrarias en ejecución
+- **Requisitos**: Linux x86_64 y directorio del ejecutable con permisos de escritura
+
+**Nota importante**:
+- La primera actualización debe ser manual (bootstrap)
+- No hay rollback automático si el nuevo binario llega a ejecutar y luego falla
+- Si el nuevo binario falla después del exec, restaurar manualmente desde `.bak`
+- El estado pending se limpia después de Discord ready
+- Bloqueante antes del primer release: proteger `main`, proteger `v*` con ruleset y exigir el environment `release`
+
 
 ## 🤝 Contribuciones
 

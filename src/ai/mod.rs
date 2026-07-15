@@ -109,7 +109,7 @@ impl OwnerInfo {
             email: owner_file.owner.email,
             skills: owner_file.owner.skills,
             bio: owner_file.owner.bio,
-            discord_id: owner_file.owner.discord_id,
+            discord_id: crate::config::OWNER_ID.to_string(),
             personality: owner_file.context.as_ref().and_then(|c| c.personality.clone()),
             communication_style: owner_file.context.as_ref().and_then(|c| c.communication_style.clone()),
             specialties_focus: owner_file.context.as_ref().and_then(|c| c.specialties_focus.clone()),
@@ -134,7 +134,7 @@ impl OwnerInfo {
                 "Technology Consulting".to_string(),
             ],
             bio: "Passionate and creative developer specialized in innovative technological solutions. Expert in creating Discord bots, web applications, and providing consulting services for unique projects.".to_string(),
-            discord_id: "1400464001133056111".to_string(),
+            discord_id: crate::config::OWNER_ID.to_string(),
             personality: Some("Functional and direct, with adjustable humor levels like TARS. Intelligent and capable, but doesn't rub it in your face (much).".to_string()),
             communication_style: Some("Formal, precise, with a touch of elegant British sarcasm. Quick responses with confidence.".to_string()),
             specialties_focus: Some("Technology solutions, bot development, and creative projects".to_string()),
@@ -195,9 +195,14 @@ impl AIManager {
     }
 
     /// Check if a message should be processed by AI
-    pub fn should_process_message(&self, channel_id: &str, author_id: &str) -> bool {
-        // Process if it's in the AI channel and not from the bot itself
-        channel_id == self.config.ai_channel_id && author_id != self.config.owner_info.discord_id
+    ///
+    /// Always gates on the central `config::OWNER_ID` constant, NOT on
+    /// `owner_info.discord_id` from the toml file, so a file-level override
+    /// cannot weaken AI authorization.
+    pub fn should_process_message(&self, channel_id: &str, author_id: u64) -> bool {
+        // Process if it's in the AI channel and not from the bot owner itself.
+        channel_id == self.config.ai_channel_id
+            && author_id != crate::config::OWNER_ID
     }
 
     /// Generate AI response for a user message
@@ -811,8 +816,13 @@ impl AIManager {
         &self.config.ai_channel_id
     }
 
-    /// Get owner Discord ID
-    pub fn get_owner_id(&self) -> &str {
-        &self.config.owner_info.discord_id
+    /// Get the canonical owner Discord ID.
+    ///
+    /// Always returns the central `config::OWNER_ID` constant. The `toml`
+    /// file's `discord_id` is **only** used for AI prompt context (name, bio);
+    /// it cannot override owner authorization. Returns the decimal string form
+    /// for callers that embed it in prompt text.
+    pub fn get_owner_id(&self) -> String {
+        crate::config::OWNER_ID.to_string()
     }
 }

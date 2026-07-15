@@ -13,7 +13,6 @@ use chrono::Utc;
 use uuid::Uuid;
 
 const TICKET_CHANNEL_ID: &str = "1400493422036648088";
-const OWNER_ID: &str = "1400464001133056111";
 
 /// Handle the /ticket_setup command
 pub async fn handle_ticket_setup_command(
@@ -176,13 +175,14 @@ pub async fn handle_ticket_create(
     }
 
     // Add owner permissions
-    if let Ok(owner_id) = OWNER_ID.parse::<u64>() {
-        permission_overwrites.push(PermissionOverwrite {
-            allow: Permissions::VIEW_CHANNEL | Permissions::SEND_MESSAGES | Permissions::READ_MESSAGE_HISTORY | Permissions::MANAGE_MESSAGES,
-            deny: Permissions::empty(),
-            kind: PermissionOverwriteType::Member(UserId::new(owner_id)),
-        });
-    }
+    permission_overwrites.push(PermissionOverwrite {
+        allow: Permissions::VIEW_CHANNEL
+            | Permissions::SEND_MESSAGES
+            | Permissions::READ_MESSAGE_HISTORY
+            | Permissions::MANAGE_MESSAGES,
+        deny: Permissions::empty(),
+        kind: PermissionOverwriteType::Member(UserId::new(crate::config::OWNER_ID)),
+    });
 
     // Create the ticket channel
     let channel_builder = CreateChannel::new(&ticket_id)
@@ -201,9 +201,9 @@ pub async fn handle_ticket_create(
             let welcome_embed = CreateEmbed::new()
                 .title("🎫 Ticket Created Successfully")
                 .description(&format!(
-                    "Welcome to your support ticket, {}! Please describe your issue or question in detail. Our team has been notified and will respond shortly.\n\n<@{}>", 
+                    "Welcome to your support ticket, {}! Please describe your issue or question in detail. Our team has been notified and will respond shortly.\n\n<@{}>",
                     component.user.name,
-                    OWNER_ID
+                    crate::config::OWNER_ID
                 ))
                 .color(Color::from_rgb(138, 43, 226))
                 .thumbnail(thumbnail_url)
@@ -299,10 +299,9 @@ pub async fn handle_ticket_close(
     if let Some(button_data) = data_manager.get_button_message(&component.message.id.to_string()) {
         if let Some(creator_id) = button_data.get_metadata("creator_id") {
             let creator_id = creator_id.parse::<u64>()?;
-            let owner_id = OWNER_ID.parse::<u64>()?;
 
             // Check if user has permission to close (creator or owner)
-            if user_id.get() != creator_id && user_id.get() != owner_id {
+            if user_id.get() != creator_id && user_id.get() != crate::config::OWNER_ID {
                 let embed = CreateEmbed::new()
                     .title("❌ Permission Denied")
                     .description("You don't have permission to close this ticket. Only the ticket creator or server owner can close tickets.")
@@ -361,7 +360,8 @@ pub async fn handle_ticket_close_command(
     let user_id = command.user.id;
 
     // Check if this is a ticket channel
-    let is_ticket_channel = channel_id.to_string().starts_with("ticket-") || 
+    let is_ticket_channel = channel_id.to_string().starts_with("ticket-")
+        ||
         data_manager.is_ticket_channel(&channel_id.to_string());
 
     if !is_ticket_channel {
@@ -378,8 +378,7 @@ pub async fn handle_ticket_close_command(
     }
 
     // Check permissions (creator or owner)
-    let owner_id = OWNER_ID.parse::<u64>()?;
-    let has_permission = user_id.get() == owner_id || 
+    let has_permission = user_id.get() == crate::config::OWNER_ID ||
         data_manager.is_ticket_creator(&channel_id.to_string(), &user_id.to_string());
 
     if !has_permission {
