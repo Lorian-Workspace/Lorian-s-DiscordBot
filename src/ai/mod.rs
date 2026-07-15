@@ -199,10 +199,18 @@ impl AIManager {
     /// Always gates on the central `config::OWNER_ID` constant, NOT on
     /// `owner_info.discord_id` from the toml file, so a file-level override
     /// cannot weaken AI authorization.
-    pub fn should_process_message(&self, channel_id: &str, author_id: u64) -> bool {
-        // Process if it's in the AI channel and not from the bot owner itself.
-        channel_id == self.config.ai_channel_id
-            && author_id != crate::config::OWNER_ID
+    pub fn should_process_message(
+        &self,
+        channel_id: &str,
+        author_id: u64,
+        channel_override: Option<u64>,
+    ) -> bool {
+        // Owner-configured override wins over the built-in default channel.
+        let matches_channel = match channel_override {
+            Some(id) => channel_id == id.to_string(),
+            None => channel_id == self.config.ai_channel_id,
+        };
+        matches_channel && author_id != crate::config::OWNER_ID
     }
 
     /// Generate AI response for a user message

@@ -102,6 +102,17 @@ pub struct SafetyData {
     pub honeypot_recoveries: HashMap<String, HoneypotRecovery>,
 }
 
+/// GitHub activity feed configuration and state
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct GithubFeedData {
+    /// Channel where GitHub activity announcements are posted
+    #[serde(default)]
+    pub channel_id: Option<u64>,
+    /// Newest GitHub event ID already announced (baseline on first poll)
+    #[serde(default)]
+    pub last_event_id: Option<u64>,
+}
+
 /// Reminder data structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Reminder {
@@ -146,6 +157,12 @@ pub struct BotData {
     /// Verification, opt-in announcement, and honeypot recovery state.
     #[serde(default)]
     pub safety: SafetyData,
+    /// GitHub activity feed configuration
+    #[serde(default)]
+    pub github_feed: GithubFeedData,
+    /// Owner-configured AI channel override (None = built-in default)
+    #[serde(default)]
+    pub ai_channel_id: Option<u64>,
     /// Last update timestamp
     pub last_updated: DateTime<Utc>,
 }
@@ -158,6 +175,8 @@ impl BotData {
             reminders: HashMap::new(),
             feedback_messages: HashMap::new(),
             safety: SafetyData::default(),
+            github_feed: GithubFeedData::default(),
+            ai_channel_id: None,
             last_updated: Utc::now(),
         }
     }
